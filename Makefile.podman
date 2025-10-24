@@ -1,0 +1,59 @@
+# Makefile for Host Machine
+
+# Define variables
+DOCKER_IMAGE_NAME ?= my-python-app
+PROJECT_NAME ?= $(basename $(shell pwd))
+
+# Build Docker image for development
+build-dev:
+	podman build -t ${DOCKER_IMAGE_NAME}-dev -f Dockerfile.dev --build-arg UID=$(shell id -u) --build-arg GID=$(shell id -g) .
+
+# Run Docker container for development
+run-dev:
+	podman run -d -it\
+		--name ${DOCKER_IMAGE_NAME}-dev-balance \
+		--cap-add=NET_RAW \
+		--userns=keep-id \
+		-v $(shell pwd):/workspace:Z \
+		-w /workspace \
+		${DOCKER_IMAGE_NAME}-dev
+
+# Build Docker image for production
+build-prod:
+	podman build -t ${DOCKER_IMAGE_NAME} .
+
+# Run Docker container for production
+run-prod:
+	podman run -d --rm \
+		--name ${DOCKER_IMAGE_NAME}-prod-balance \
+		-p 8080:80 \
+		${DOCKER_IMAGE_NAME}
+
+# Clean up
+clean:
+	podman rmi ${DOCKER_IMAGE_NAME} ${DOCKER_IMAGE_NAME}-dev
+	rm -rf __pycache__/
+	rm -rf *.pyc
+	rm -rf .pytest_cache
+
+stop-dev:
+	podman stop ${DOCKER_IMAGE_NAME}-dev-balance || true
+	podman rm ${DOCKER_IMAGE_NAME}-dev-balance || true
+	rm -rf __pycache__/
+	rm -rf *.pyc
+	rm -rf .pytest_cache
+
+clean-dev:
+	podman stop ${DOCKER_IMAGE_NAME}-dev-balance || true
+	podman rm ${DOCKER_IMAGE_NAME}-dev-balance || true
+	podman rmi ${DOCKER_IMAGE_NAME}-dev
+	rm -rf __pycache__/
+	rm -rf *.pyc
+	rm -rf .pytest_cache
+
+# Run tests with coverage inside the dev container
+coverage:
+	podman exec -it ${DOCKER_IMAGE_NAME}-dev-balance bash -c "cd /workspace && pytest --cov=src --cov-report=html --cov-report=term-missing"
+
+.PHONY: build-dev run-dev build-prod run-prod clean clean-dev stop-dev coverage
+

@@ -1,0 +1,38 @@
+classDiagram
+    class PipelineCommand {
+        <<abstract>>
+        +process(df)
+    }
+    class AppendFilesCommand {
+        +process(df)
+    }
+    class CleanDataCommand {
+        +process(df)
+    }
+    class SaveFileCommand {
+        +process(df)
+    }
+    class FactoidIngestionCommand {
+        +process(df)
+    }
+    class ModelTrainingCommand {
+        +process(df)
+    }
+    class DataPipeline {
+        +run(initial_df)
+        -commands
+    }
+    class PipelineConfig {
+        -pipeline: List[StepConfig]
+    }
+    class StepConfig {
+        -step_name
+        -params
+    }
+    PipelineCommand <|-- AppendFilesCommand
+    PipelineCommand <|-- CleanDataCommand
+    PipelineCommand <|-- SaveFileCommand
+    PipelineCommand <|-- FactoidIngestionCommand
+    PipelineCommand <|-- ModelTrainingCommand
+    DataPipeline o-- PipelineCommand
+    PipelineConfig o-- StepConfig

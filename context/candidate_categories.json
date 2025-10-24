@@ -1,0 +1,191 @@
+{
+  "expense_categories": {
+    "Income": [
+      "Salary",
+      "Freelance/Contract Income",
+      "Investment Income",
+      "Business Income",
+      "Government Benefits",
+      "Rental Income",
+      "Tax Refunds",
+      "Insurance Payment",
+      "Healthcare Reimbursement"
+    ],
+    "Housing": [
+      "Rent",
+      "Mortgage",
+      "Energy",
+      "Water",
+      "Internet",
+      "Mobile Phone",
+      "Home Maintenance",
+      "Home Repairs",
+      "Lawn Care/Landscaping",
+      "Home Security"
+    ],
+    "Transportation": [
+      "Car Payment",
+      "Fuel",
+      "Car Maintenance",
+      "License",
+      "Public Transportation",
+      "Parking Fees",
+      "Tolls",
+      "Uber",
+      "Car Rental"
+    ],
+    "Food & Dining": [
+      "Groceries",
+      "Restaurants",
+      "Fast Food",
+      "Coffee Shops",
+      "Pub",
+      "Work Lunches",
+      "Food Delivery",
+      "Catering"
+    ],
+    "Healthcare": [
+      "Doctor Visits",
+      "Prescription Medications",
+      "Dental Care",
+      "Vision Care",
+      "Medical Supplies",
+      "Health & Wellness",
+      "Mental Health Services",
+      "Alternative Medicine",
+      "Prepaid Voucher"
+    ],
+    "Personal Care": [
+      "Saloon",
+      "Clothing",
+      "Shoes",
+      "Personal Hygiene Items",
+      "Cosmetics/Beauty Products",
+      "Spa Services",
+      "Dry Cleaning/Laundry"
+    ],
+    "Entertainment & Recreation": [
+      "Theater",
+      "Events",
+      "Hobbies",
+      "Books/Magazines",
+      "Streaming Services",
+      "Gaming",
+      "Sports/Recreation",
+      "Travel/Vacation",
+      "Amusement Parks",
+      "Museums/Attractions"
+    ],
+    "Financial": [
+      "Bank Fees",
+      "ATM Fees",
+      "Credit Card Interest",
+      "Loan Interest",
+      "Investment Fees",
+      "Financial Advisory Services",
+      "Overdraft Fees",
+      "Wire Transfer Fees",
+      "Credit Card Payment Amex",
+      "Credit Card Payment Visa",
+      "Non GBP Fees"
+    ],
+    "Shopping": [
+      "General Merchandise",
+      "Electronics",
+      "Home Goods",
+      "Gifts",
+      "Online Shopping",
+      "Department Stores",
+      "Hardware/Tools",
+      "Furniture"
+    ],
+    "Education": [
+      "Tuition",
+      "Supplies",
+      "Online Courses",
+      "Professional Development",
+      "Student Loan Payments",
+      "Certification Fees",
+      "Conference Fees"
+    ],
+    "Family": [
+      "Childcare",
+      "School Expenses",
+      "Child Activities",
+      "Pet Care",
+      "Pet Food/Supplies",
+      "Veterinary Bills",
+      "Toys/Pet Accessories",
+      "Allowances",
+      "Accountant"
+    ],
+    "Professional": [
+      "Office Supplies",
+      "Professional Memberships",
+      "Business Meals",
+      "Professional Services",
+      "Work Equipment",
+      "Business Travel",
+      "Continuing Education",
+      "Networking Events"
+    ],
+    "Insurance": [
+      "Life Insurance",
+      "Disability Insurance",
+      "Home Insurance",
+      "Travel Insurance",
+      "Pet Insurance",
+      "Renters/Homeowners Insurance",
+      "Auto Insurance"
+    ],
+    "Savings": [
+      "Emergency Fund",
+      "Retirement Contributions",
+      "Investment Contributions",
+      "Savings Account Transfers",
+      "CD/Money Market Deposits",
+      "Precious Metal",
+      "College Savings"
+    ],
+    "Debt Payments": [
+      "Credit Card Payments",
+      "Student Loan Payments",
+      "Personal Loan Payments",
+      "Mortgage Principal",
+      "Mortgage Fees",
+      "Auto Loan Payments",
+      "Medical Debt Payments"
+    ],
+    "Taxes": [
+      "Income Tax",
+      "Road Tax",
+      "Property Tax",
+      "Sales Tax",
+      "Road Tax",
+      "Council Tax",
+      "TV License"
+    ],
+    "Charitable & Gifts": [
+      "Charitable Donations",
+      "Religious Donations",
+      "Birthday Gifts",
+      "Holiday Gifts",
+      "Wedding Gifts",
+      "Fundraising Contributions"
+    ],
+    "Miscellaneous": [
+      "Subscriptions",
+      "Legal Fees",
+      "Postal Services",
+      "Government Fees",
+      "Uncategorized",
+      "Cash Withdrawals",
+      "Foreign Transaction Fees",
+      "Lottery"
+    ],
+    "Transfers": [
+      "Between Personal Accounts",
+      "To Family Members"
+    ]
+  }
+}

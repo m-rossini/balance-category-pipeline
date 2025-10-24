@@ -1,0 +1,11 @@
+flowchart TD
+    A[Load PipelineConfig] --> B[For each StepConfig]
+    B --> C[Instantiate PipelineCommand]
+    C --> D[Add to DataPipeline]
+    D --> E[Run DataPipeline]
+    E --> F[Run AppendFilesCommand]
+    F --> G[Run CleanDataCommand]
+    G --> H[Run SaveFileCommand]
+    H --> I[Optional: FactoidIngestionCommand]
+    I --> J[Optional: ModelTrainingCommand]
+    J --> K[Output Results]

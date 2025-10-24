@@ -1,0 +1,48 @@
+# Development image for attaching VS Code
+
+FROM python:3.13.7-slim-bookworm
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        git \
+        sudo \
+        vim \
+        less \
+        make \
+        libssl-dev \
+        libffi-dev \
+        iputils-ping \
+        netcat-openbsd \
+        dnsutils \
+        traceroute \
+        iproute2 \
+        procps \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install pip packages globally (they'll be available to any user)
+RUN pip install --no-cache-dir poetry
+
+# Create user with build args (matching host UID/GID)
+ARG UID=1000
+ARG GID=1000
+RUN groupadd -g ${GID} devuser || true && \
+    useradd -u ${UID} -g ${GID} -m -s /bin/bash devuser && \
+    echo "devuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+WORKDIR /workspace
+
+# Copy and install dependencies
+COPY pyproject.toml poetry.lock* ./
+RUN poetry config virtualenvs.create false && \
+    poetry install --no-root --with dev
+
+# Switch to non-root user
+USER devuser
+
+EXPOSE 5678
+
+CMD ["sleep", "infinity"]

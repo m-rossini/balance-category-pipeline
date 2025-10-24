@@ -1,0 +1,172 @@
+{
+  "transaction_codes": [
+    {
+      "code": "BGC",
+      "description": "Bank Giro Credit"
+    },
+    {
+      "code": "BNS",
+      "description": "Bonus BP"
+    },
+    {
+      "code": "BP",
+      "description": "Bill Payment"
+    },
+    {
+      "code": "CHG",
+      "description": "Charge"
+    },
+    {
+      "code": "CHQ",
+      "description": "Cheque"
+    },
+    {
+      "code": "COM",
+      "description": "Commission"
+    },
+    {
+      "code": "COR",
+      "description": "Correction"
+    },
+    {
+      "code": "CPT",
+      "description": "Cashpoint"
+    },
+    {
+      "code": "CSH",
+      "description": "Cash"
+    },
+    {
+      "code": "CSQ",
+      "description": "Cash/Cheque"
+    },
+    {
+      "code": "DD",
+      "description": "Direct Debit"
+    },
+    {
+      "code": "DEB",
+      "description": "Debit Card"
+    },
+    {
+      "code": "DEP",
+      "description": "Deposit"
+    },
+    {
+      "code": "EFT",
+      "description": "EFTPOS (Electronic funds transfer at point of sale)"
+    },
+    {
+      "code": "EUR",
+      "description": "Euro Cheque"
+    },
+    {
+      "code": "FE",
+      "description": "Foreign Exchange"
+    },
+    {
+      "code": "FEE",
+      "description": "Fixed Service Charge"
+    },
+    {
+      "code": "FPC",
+      "description": "Faster Payment Charge"
+    },
+    {
+      "code": "FPI",
+      "description": "Faster Payment Incoming"
+    },
+    {
+      "code": "FPO",
+      "description": "Faster Payment Outgoing"
+    },
+    {
+      "code": "IB",
+      "description": "Internet Banking"
+    },
+    {
+      "code": "INT",
+      "description": "Interest"
+    },
+    {
+      "code": "MPI",
+      "description": "Mobile Payment Incoming"
+    },
+    {
+      "code": "MPO",
+      "description": "Mobile Payment Outgoing"
+    },
+    {
+      "code": "MTG",
+      "description": "Mortgage"
+    },
+    {
+      "code": "NS",
+      "description": "National Savings Dividend"
+    },
+    {
+      "code": "NSC",
+      "description": "National Savings Certificates"
+    },
+    {
+      "code": "OTH",
+      "description": "Other"
+    },
+    {
+      "code": "PAY",
+      "description": "Payment"
+    },
+    {
+      "code": "PSB",
+      "description": "Premium Savings Bonds"
+    },
+    {
+      "code": "PSV",
+      "description": "Paysave"
+    },
+    {
+      "code": "SAL",
+      "description": "Salary"
+    },
+    {
+      "code": "SPB",
+      "description": "Cashpoint"
+    },
+    {
+      "code": "SO",
+      "description": "Standing Order"
+    },
+    {
+      "code": "STK",
+      "description": "Stocks/Shares"
+    },
+    {
+      "code": "TD",
+      "description": "Dep Term Dec"
+    },
+    {
+      "code": "TDG",
+      "description": "Term Deposit Gross Interest"
+    },
+    {
+      "code": "TDI",
+      "description": "Dep Term Inc"
+    },
+    {
+      "code": "TDN",
+      "description": "Term Deposit Net Interest"
+    },
+    {
+      "code": "TFR",
+      "description": "Transfer"
+    },
+    {
+      "code": "UT",
+      "description": "Unit Trust"
+    },
+    {
+      "code": "SUR",
+      "description": "Excess Reject"
+    }
+  ]
+}

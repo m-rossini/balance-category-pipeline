@@ -1,0 +1,15 @@
+{
+  // Disable format-on-type (typing/pressing Enter) and other auto-format behaviors in the workspace
+  "editor.formatOnType": false,
+  "editor.formatOnSave": false,
+  "editor.formatOnPaste": false,
+
+  // Be explicit for Python files as well
+  "[python]": {
+    "editor.formatOnType": false,
+    "editor.formatOnSave": false
+  },
+
+  // Prevent a default formatter from being forced in the workspace
+  "editor.defaultFormatter": null
+}

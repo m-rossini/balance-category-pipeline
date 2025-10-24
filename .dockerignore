@@ -1,0 +1,33 @@
+# Ignore large or irrelevant files from being copied into Docker images
+models/
+data/
+*.csv
+*.safetensors
+*.pth
+*.pt
+*.bin
+output/
+.git/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+dist/
+build/
+.DS_Store
+/.idea/
+.vscode/
+*.log
+env/
+pip-wheel-metadata/
+
+# Keep a local wheelhouse directory (wheels/) in the build context when you want to reuse pre-downloaded
+# wheels. To use it, populate `wheels/` in the repo and build with:
+#   podman build -f Dockerfile.dev --build-arg SKIP_WHEEL_DOWNLOAD=1 -t python-for-dev .
+# If you don't want to commit wheels to the repo, leave SKIP_WHEEL_DOWNLOAD=0 (default) and the builder
+# will `pip download` the required wheels into /wheels during the build.
+
+# Optionally ignore scripts if you prefer not to copy them
+# scripts/

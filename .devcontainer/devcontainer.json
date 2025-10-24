@@ -1,0 +1,18 @@
+{
+    "name": "Python Development",
+    "image": "python:3.11-slim",
+    "runArgs": ["--security-opt", "label=disable"],
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.shell.linux": "/bin/bash"
+            },
+            "extensions": ["ms-python.python"]
+        }
+    },
+    "mounts": ["source=${localWorkspaceFolder},target=/workspace,type=bind,Z"],
+    "postCreateCommand": "pip install --user -r /workspace/requirements.txt",
+    "remoteUser": "vscode",
+    "workspaceFolder": "/workspace"
+}
+
