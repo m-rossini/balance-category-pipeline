@@ -400,16 +400,12 @@ class QualityAnalysisCommand(PipelineCommand):
         
         try:
             metrics = self._analyze_quality(df)
-            
-            if self.reporter:
-                self.reporter.report(metrics)
-            
+            self.reporter.report(metrics)
             logging.info(f"[QualityAnalysisCommand] Quality analysis complete. Overall index: {metrics.calculate_overall_quality_index()}")
             
         except Exception as e:
             logging.error(f"[QualityAnalysisCommand] Failed to analyze quality: {e}")
         
-        # Always return DataFrame unchanged (pass-through)
         return df
     
     def _analyze_quality(self, df: pd.DataFrame) -> QualityMetrics:
