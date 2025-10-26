@@ -281,7 +281,7 @@ class AIRemoteCategorizationCommand(PipelineCommand):
             response.raise_for_status()
             response_data = response.json()
             
-            logging.info(f"[AIRemoteCategorizationCommand] Batch {batch_start+1}-{batch_end} successful")
+            logging.debug(f"[AIRemoteCategorizationCommand] Batch {batch_start+1}-{batch_end} successful")
             return response_data
             
         except Exception as e:
@@ -338,11 +338,14 @@ class DataPipeline:
         
         for command in self.commands:
             logging.debug(f"[DataPipeline] Running step: {command.__class__.__name__}")
+            from datetime import datetime
+            start_time = datetime.now()
             start = time.time()
             input_rows = len(df) if isinstance(df, pd.DataFrame) else 0
             
             df = command.process(df)
             
+            end_time = datetime.now()
             output_rows = len(df) if isinstance(df, pd.DataFrame) else 0
             elapsed = time.time() - start
             logging.debug(f"[DataPipeline] Step {command.__class__.__name__} completed in {elapsed:.4f} seconds")
@@ -354,6 +357,8 @@ class DataPipeline:
                 input_rows=input_rows,
                 output_rows=output_rows,
                 duration=elapsed,
+                start_time=start_time,
+                end_time=end_time,
                 parameters={}
             )
             self.collector.track_step(step_metadata)
