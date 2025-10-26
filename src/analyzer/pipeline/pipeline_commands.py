@@ -13,6 +13,10 @@ from .categorization_types import (
     Category, CategorizationSuccess, CategorizationFailure, CategorizationResult
 )
 
+# Import quality analysis components
+from analyzer.workflows.quality_metrics import QualityMetrics
+from analyzer.workflows.quality_reporter import QualityReporter
+
 # Decorator-based command registry
 COMMAND_REGISTRY = {}
 def register_command(cls):
@@ -363,3 +367,140 @@ class DataPipeline:
             repository.save(metadata)
         
         return df
+
+
+@register_command
+class QualityAnalysisCommand(PipelineCommand):
+    """Analyzes data quality of Category, SubCategory, and Confidence columns."""
+    
+    def __init__(self, columns: Optional[List[str]] = None, reporter: Optional[QualityReporter] = None, context: Optional[Dict[str, Any]] = None):
+        """Initialize quality analysis command.
+        
+        Args:
+            columns: List of column names to analyze (default: ['Category', 'SubCategory', 'Confidence'])
+            reporter: QualityReporter instance for reporting results (optional dependency injection)
+            context: Optional context dict for compatibility
+        """
+        self.columns = columns or ['Category', 'SubCategory', 'Confidence']
+        self.reporter = reporter
+        self.context = context or {}
+    
+    def process(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Analyze data quality and report metrics (pass-through command).
+        
+        Args:
+            df: Input DataFrame to analyze
+            
+        Returns:
+            The same DataFrame unchanged (this is a pass-through analysis command)
+        """
+        if df.empty:
+            logging.warning("[QualityAnalysisCommand] DataFrame is empty, skipping quality analysis")
+            return df
+        
+        try:
+            metrics = self._analyze_quality(df)
+            
+            if self.reporter:
+                self.reporter.report(metrics)
+            
+            logging.info(f"[QualityAnalysisCommand] Quality analysis complete. Overall index: {metrics.calculate_overall_quality_index()}")
+            
+        except Exception as e:
+            logging.error(f"[QualityAnalysisCommand] Failed to analyze quality: {e}")
+        
+        # Always return DataFrame unchanged (pass-through)
+        return df
+    
+    def _analyze_quality(self, df: pd.DataFrame) -> QualityMetrics:
+        """Analyze quality of Category, SubCategory, and Confidence columns.
+        
+        Returns:
+            QualityMetrics instance with analysis results
+        """
+        total_rows = len(df)
+        
+        # Analyze Category completeness
+        category_col = self.columns[0] if len(self.columns) > 0 else 'Category'
+        category_filled = self._count_non_empty(df, category_col)
+        category_completeness = (category_filled / total_rows * 100) if total_rows > 0 else 0.0
+        
+        # Analyze SubCategory completeness
+        subcategory_col = self.columns[1] if len(self.columns) > 1 else 'SubCategory'
+        subcategory_filled = self._count_non_empty(df, subcategory_col)
+        subcategory_completeness = (subcategory_filled / total_rows * 100) if total_rows > 0 else 0.0
+        
+        # Analyze Confidence scores
+        confidence_col = self.columns[2] if len(self.columns) > 2 else 'Confidence'
+        confidence_completeness, mean_conf, min_conf, max_conf, high_rate, medium_rate, low_rate = self._analyze_confidence(df, confidence_col, total_rows)
+        
+        # Analyze subcategory consistency (subcategories only with categories)
+        subcategory_consistency = self._analyze_consistency(df, category_col, subcategory_col, total_rows)
+        
+        return QualityMetrics(
+            category_completeness=category_completeness,
+            subcategory_completeness=subcategory_completeness,
+            confidence_completeness=confidence_completeness,
+            mean_confidence=mean_conf,
+            min_confidence=min_conf,
+            max_confidence=max_conf,
+            high_confidence_rate=high_rate,
+            medium_confidence_rate=medium_rate,
+            low_confidence_rate=low_rate,
+            subcategory_consistency=subcategory_consistency,
+            total_rows=total_rows,
+        )
+    
+    def _count_non_empty(self, df: pd.DataFrame, column: str) -> int:
+        """Count non-empty values in a column (excludes None and empty strings)."""
+        if column not in df.columns:
+            return 0
+        return ((df[column].notna()) & (df[column].astype(str).str.strip() != '')).sum()
+    
+    def _analyze_confidence(self, df: pd.DataFrame, column: str, total_rows: int) -> tuple:
+        """Analyze confidence scores and return completeness and distribution metrics."""
+        if column not in df.columns:
+            return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        
+        # Get non-null confidence values
+        conf_values = pd.to_numeric(df[column], errors='coerce')
+        non_null_count = conf_values.notna().sum()
+        confidence_completeness = (non_null_count / total_rows * 100) if total_rows > 0 else 0.0
+        
+        if non_null_count == 0:
+            return confidence_completeness, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        
+        # Calculate statistics on non-null values
+        valid_conf = conf_values.dropna()
+        mean_conf = valid_conf.mean()
+        min_conf = valid_conf.min()
+        max_conf = valid_conf.max()
+        
+        # Calculate confidence distribution
+        high_count = (valid_conf > 0.7).sum()
+        medium_count = ((valid_conf > 0.4) & (valid_conf <= 0.7)).sum()
+        low_count = (valid_conf <= 0.4).sum()
+        
+        high_rate = (high_count / total_rows * 100) if total_rows > 0 else 0.0
+        medium_rate = (medium_count / total_rows * 100) if total_rows > 0 else 0.0
+        low_rate = (low_count / total_rows * 100) if total_rows > 0 else 0.0
+        
+        return confidence_completeness, mean_conf, min_conf, max_conf, high_rate, medium_rate, low_rate
+    
+    def _analyze_consistency(self, df: pd.DataFrame, category_col: str, subcategory_col: str, total_rows: int) -> float:
+        """Analyze subcategory consistency (subcategories only present with categories)."""
+        if category_col not in df.columns or subcategory_col not in df.columns:
+            return 100.0
+        
+        # Find rows with subcategory filled
+        has_subcategory = (df[subcategory_col].notna()) & (df[subcategory_col].astype(str).str.strip() != '')
+        
+        if has_subcategory.sum() == 0:
+            return 100.0
+        
+        # Check how many of those also have category
+        consistent = has_subcategory & ((df[category_col].notna()) & (df[category_col].astype(str).str.strip() != ''))
+        
+        consistency_rate = (consistent.sum() / has_subcategory.sum() * 100) if has_subcategory.sum() > 0 else 100.0
+        
+        return consistency_rate
