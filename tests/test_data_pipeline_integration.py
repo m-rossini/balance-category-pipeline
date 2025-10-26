@@ -73,9 +73,9 @@ class TestDataPipelineIntegration:
         """Create test training data file."""
         training_data = {
             'TransactionNumber': [1, 2, 3],
-            'Category': ['Food & Dining', 'Income', 'Food & Dining'],
-            'SubCategory': ['Coffee Shops', 'Salary', 'Groceries'],
-            'Notes': ['Coffee purchase', 'Monthly salary', 'Grocery shopping']
+            'CategoryAnnotation': ['Food & Dining', 'Income', 'Food & Dining'],
+            'SubCategoryAnnotation': ['Coffee Shops', 'Salary', 'Groceries'],
+            'Confidence': [0.9, 0.95, 0.88]
         }
 
         df = pd.DataFrame(training_data)
@@ -238,8 +238,10 @@ class TestDataPipelineIntegration:
     def test_merge_files_command_missing_df(self):
         """Test MergeFilesCommand error when df is None and input_file is set."""
         merge_command = MergeFilesCommand(input_file='dummy.csv')
-        result_df = merge_command.process(df=None)
-        assert result_df.empty
+        result = merge_command.process(df=None)
+        # Check error code
+        assert result.return_code == -1
+        assert result.data is None
 
     def test_clean_data_command_default_clean(self):
         """Test CleanDataCommand uses default_clean when no functions provided."""

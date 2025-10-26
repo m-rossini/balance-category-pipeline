@@ -38,10 +38,10 @@ class MergeFilesCommand(PipelineCommand):
         self.file_glob = file_glob
         self.context = context or {}
 
-    def process(self, df=None):
+    def process(self, df=None) -> CommandResult:
         if df is None or not self.input_file:
             logging.error("[MergeFilesCommand] Missing input DataFrame or input file.")
-            return pd.DataFrame()
+            return CommandResult(return_code=-1, data=None, error={"message": "Missing input DataFrame or input file"})
 
         try:
             logging.debug(f"[MergeFilesCommand] Merging with {self.input_file} on {self.on_columns}")
@@ -79,10 +79,10 @@ class MergeFilesCommand(PipelineCommand):
                 merged.drop(columns=['Confidence_trained'], inplace=True)
 
             logging.info(f"[MergeFilesCommand] Merge completed. Resulting rows: {len(merged)}")
-            return merged
+            return CommandResult(return_code=0, data=merged)
         except Exception as e:
             logging.error(f"[MergeFilesCommand] Failed to merge: {e}")
-            return df
+            return CommandResult(return_code=-1, data=None, error={"message": str(e)})
 
 @register_command
 class CleanDataCommand(PipelineCommand):
@@ -338,7 +338,19 @@ class DataPipeline:
             start = time.time()
             input_rows = len(df) if isinstance(df, pd.DataFrame) else 0
             
-            df = command.process(df)
+            result = command.process(df)
+            
+            # Handle CommandResult
+            if isinstance(result, CommandResult):
+                # Check return code - halt on negative codes
+                if result.return_code < 0:
+                    logging.error(f"[DataPipeline] Command {command.__class__.__name__} failed with return_code={result.return_code}: {result.error}")
+                    # Return empty DataFrame to indicate failure
+                    return pd.DataFrame()
+                df = result.data
+            else:
+                # Fallback for legacy DataFrame returns
+                df = result
             
             output_rows = len(df) if isinstance(df, pd.DataFrame) else 0
             elapsed = time.time() - start

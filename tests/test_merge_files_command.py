@@ -34,7 +34,8 @@ def test_merge_files_command():
             merge_command = MergeFilesCommand(input_file=factoids_file.name, on_columns=['TransactionNumber'])
 
             # Process the merge
-            result_df = merge_command.process(data_df)
+            result = merge_command.process(data_df)
+            result_df = result.data
 
             # Debug output on failure: print original, factoids and result
             def debug_print():
