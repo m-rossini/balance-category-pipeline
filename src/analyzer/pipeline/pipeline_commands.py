@@ -321,12 +321,43 @@ class DataPipeline:
         self.commands = commands
         self.collector = collector
         
-    def run(self, initial_df=None):
+    def run(self, initial_df=None, repository=None):
         df = initial_df
+        
+        # Start metadata collection if collector provided
+        if self.collector:
+            self.collector.start_pipeline()
+        
         for command in self.commands:
             logging.debug(f"[DataPipeline] Running step: {command.__class__.__name__}")
             start = time.time()
+            input_rows = len(df) if isinstance(df, pd.DataFrame) else 0
+            
             df = command.process(df)
+            
+            output_rows = len(df) if isinstance(df, pd.DataFrame) else 0
             elapsed = time.time() - start
             logging.debug(f"[DataPipeline] Step {command.__class__.__name__} completed in {elapsed:.4f} seconds")
+            
+            # Track step metadata if collector provided
+            if self.collector:
+                from analyzer.pipeline.metadata import StepMetadata
+                step_metadata = StepMetadata(
+                    name=command.__class__.__name__,
+                    input_rows=input_rows,
+                    output_rows=output_rows,
+                    duration=elapsed,
+                    parameters={}
+                )
+                self.collector.track_step(step_metadata)
+        
+        # End metadata collection and save if collector provided
+        if self.collector:
+            self.collector.end_pipeline()
+            
+            # Save metadata if repository provided
+            if repository:
+                metadata = self.collector.get_pipeline_metadata()
+                repository.save(metadata)
+        
         return df
