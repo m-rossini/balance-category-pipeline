@@ -1,8 +1,9 @@
 from analyzer.pipeline.pipeline_commands import (
     DataPipeline, AppendFilesCommand, CleanDataCommand,
-    AIRemoteCategorizationCommand, SaveFileCommand
+    AIRemoteCategorizationCommand, SaveFileCommand, QualityAnalysisCommand
 )
 from analyzer.workflows.bank_extract_clean import bank_extract_clean
+from analyzer.workflows.log_quality_reporter import LogQualityReporter
 import os
 
 def get_pipeline():
@@ -46,6 +47,11 @@ def get_pipeline():
             batch_size=50,
             max_errors=5,
             data={"transactions": []}, 
+            context=context
+        ),
+        QualityAnalysisCommand(
+            columns=['CategoryAnnotation', 'SubCategoryAnnotation', 'Confidence'],
+            reporter=LogQualityReporter(),
             context=context
         ),
         SaveFileCommand(

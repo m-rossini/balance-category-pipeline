@@ -1,8 +1,9 @@
 from analyzer.pipeline.pipeline_commands import (
     DataPipeline, AppendFilesCommand, CleanDataCommand,
-    MergeFilesCommand, SaveFileCommand
+    MergeFilesCommand, SaveFileCommand, QualityAnalysisCommand
 )
 from analyzer.workflows.bank_extract_clean import bank_extract_clean
+from analyzer.workflows.log_quality_reporter import LogQualityReporter
 
 def get_pipeline():
     """Define the bank transaction analysis pipeline."""
@@ -23,6 +24,11 @@ def get_pipeline():
         MergeFilesCommand(
             input_file='data/training/factoids.csv',
             on_columns=['TransactionNumber'],
+            context=context
+        ),
+        QualityAnalysisCommand(
+            columns=['CategoryAnnotation', 'SubCategoryAnnotation', 'Confidence'],
+            reporter=LogQualityReporter(),
             context=context
         ),
         SaveFileCommand(
