@@ -344,6 +344,53 @@ class TestAIRemoteCategorization:
         assert result_df.loc[0, 'CategoryAnnotation'] == 'Food & Dining'
 
     @patch('requests.post')
+    def test_stops_processing_when_max_errors_exceeded(self, mock_post):
+        """Test that processing stops when errors exceed max_errors threshold.
+        
+        Black box: Input DataFrame with API failures -> Processing stops after max_errors
+        """
+        # Mock API to always fail
+        mock_post.side_effect = Exception("API connection failed")
+
+        # Input: DataFrame with 6 rows, batch size 2 = 3 batches
+        df = self.create_test_dataframe()
+        # Add 3 more rows to make 6 total
+        extra_rows = pd.DataFrame({
+            'TransactionNumber': [4, 5, 6],
+            'TransactionDate': ['04/10/2025', '05/10/2025', '06/10/2025'],
+            'TransactionType': ['DEB', 'FPI', 'DEB'],
+            'TransactionDescription': ['AMAZON', 'TRANSFER', 'WALMART'],
+            'TransactionValue': [-25.00, 500.00, -50.00],
+            'CategoryAnnotation': [None, None, None],
+            'SubCategoryAnnotation': [None, None, None],
+            'Confidence': [None, None, None]
+        })
+        df = pd.concat([df, extra_rows], ignore_index=True)
+        
+        # Create command with batch_size=2 and max_errors=2
+        command = AIRemoteCategorizationCommand(
+            service_url="http://api.example.com/categorize",
+            context={'categories': self.context_file, 'typecode': self.typecode_file},
+            batch_size=2,
+            max_errors=2
+        )
+
+        # Execute
+        result_df = command.process(df)
+
+        # Output validation: should return DataFrame unchanged
+        assert isinstance(result_df, pd.DataFrame)
+        assert len(result_df) == 6
+        
+        # Verify API was called only 2 times (first 2 batches fail, then stop)
+        # With 6 rows and batch_size=2: would be 3 batches, but stops after 2 failures
+        assert mock_post.call_count == 2, f"Expected 2 API calls, got {mock_post.call_count}"
+        
+        # No rows should be categorized (all API calls failed)
+        assert pd.isna(result_df.loc[0, 'CategoryAnnotation'])
+        assert pd.isna(result_df.loc[1, 'CategoryAnnotation'])
+
+    @patch('requests.post')
     def test_context_passed_as_json_content_not_file_paths(self, mock_post):
         """Test that context data (categories and transaction codes) are passed as JSON content, not file paths.
         

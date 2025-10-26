@@ -175,7 +175,7 @@ class SaveFileCommand(PipelineCommand):
 
 @register_command
 class AIRemoteCategorizationCommand(PipelineCommand):
-    def __init__(self, service_url, method="POST", headers=None, data=None, context=None, batch_size=50, max_errors=10):
+    def __init__(self, service_url, method="POST", headers=None, data=None, context=None, batch_size=50, max_errors=10, impl="fixed"):
         self.service_url = service_url
         self.method = method.upper()
         self.headers = headers or {}
@@ -183,6 +183,7 @@ class AIRemoteCategorizationCommand(PipelineCommand):
         self.context = context or {}
         self.batch_size = batch_size
         self.max_errors = max_errors
+        self.impl = impl
 
     def process(self, df: pd.DataFrame) -> pd.DataFrame:
         """Process DataFrame by calling remote categorization API in batches."""
@@ -213,7 +214,7 @@ class AIRemoteCategorizationCommand(PipelineCommand):
             
             # Step 5: Merge results
             if response_data:
-                self._merge_results(df, response_data)
+                df = self._merge_results(df, response_data)
             else:
                 error_count += 1
 
@@ -222,37 +223,31 @@ class AIRemoteCategorizationCommand(PipelineCommand):
     def _load_context(self) -> List[Dict]:
         """Load all context files (driver method)."""
         context_list = []
-        context_list.extend(self._load_categories())
-        context_list.extend(self._load_transaction_codes())
+        context_list.extend(self._load_context_file('categories'))
+        context_list.extend(self._load_context_file('typecode'))
         return context_list
 
-    def _load_categories(self) -> List[Dict]:
-        """Load categories context from file."""
-        if not self.context or 'categories' not in self.context:
+    def _load_context_file(self, context_key: str) -> List[Dict]:
+        """Load a context file from the context dictionary.
+        
+        Args:
+            context_key: The key in self.context dict (e.g., 'categories', 'typecode')
+            
+        Returns:
+            List containing the loaded JSON data, or empty list if not available
+        """
+        if not self.context or context_key not in self.context:
             return []
         
         try:
-            with open(self.context['categories'], 'r') as f:
-                categories_data = json.load(f)
-                logging.debug(f"[AIRemoteCategorizationCommand] Loaded categories from {self.context['categories']}")
-                return [categories_data]
+            file_path = self.context[context_key]
+            with open(file_path, 'r') as f:
+                context_data = json.load(f)
+                logging.debug(f"[AIRemoteCategorizationCommand] Loaded {context_key} from {file_path}")
+                return [context_data]
         except Exception as e:
-            logging.warning(f"[AIRemoteCategorizationCommand] Could not load categories: {e}")
-            return [{"categories": "Unable to load"}]
-
-    def _load_transaction_codes(self) -> List[Dict]:
-        """Load transaction type codes context from file."""
-        if not self.context or 'typecode' not in self.context:
+            logging.error(f"[AIRemoteCategorizationCommand] Could not load {context_key}: {e}")
             return []
-        
-        try:
-            with open(self.context['typecode'], 'r') as f:
-                typecode_data = json.load(f)
-                logging.debug(f"[AIRemoteCategorizationCommand] Loaded transaction codes from {self.context['typecode']}")
-                return [typecode_data]
-        except Exception as e:
-            logging.warning(f"[AIRemoteCategorizationCommand] Could not load transaction codes: {e}")
-            return [{"transaction_codes": "Unable to load"}]
 
     def _build_transactions(self, batch_df: pd.DataFrame) -> List[Dict]:
         """Convert DataFrame batch to transaction list."""
@@ -276,7 +271,7 @@ class AIRemoteCategorizationCommand(PipelineCommand):
             response = requests.post(
                 self.service_url,
                 json=payload,
-                params={"impl": "fixed"},
+                params={"impl": self.impl},
                 timeout=30
             )
             response.raise_for_status()
@@ -287,18 +282,22 @@ class AIRemoteCategorizationCommand(PipelineCommand):
             
         except Exception as e:
             error_msg = str(e)
+            # Append response body if available
             if hasattr(e, 'response') and e.response is not None:
-                try:
-                    error_msg += f" | Response: {e.response.text}"
-                except:
-                    pass
+                error_msg += f" | Response: {e.response.text}"
             logging.error(f"[AIRemoteCategorizationCommand] Batch {batch_start+1}-{batch_end} failed: {error_msg}")
             return None
 
-    def _merge_results(self, df: pd.DataFrame, response_data: Dict) -> None:
-        """Apply categorization results to DataFrame."""
+    def _merge_results(self, df: pd.DataFrame, response_data: Dict) -> pd.DataFrame:
+        """Apply categorization results to DataFrame and return updated copy.
+        
+        Pure function: returns a new DataFrame without mutating the input.
+        """
         if response_data.get('code') != 'SUCCESS':
-            return
+            return df
+        
+        # Create a copy to avoid mutating the input
+        result_df = df.copy()
         
         for item in response_data.get('items', []):
             item_id = int(item.get('id'))
@@ -307,17 +306,20 @@ class AIRemoteCategorizationCommand(PipelineCommand):
             if category_data is None:
                 continue
             
-            df.loc[item_id, 'CategoryAnnotation'] = category_data.get('category')
-            df.loc[item_id, 'SubCategoryAnnotation'] = category_data.get('subcategory')
-            df.loc[item_id, 'Confidence'] = category_data.get('confidence')
+            result_df.loc[item_id, 'CategoryAnnotation'] = category_data.get('category')
+            result_df.loc[item_id, 'SubCategoryAnnotation'] = category_data.get('subcategory')
+            result_df.loc[item_id, 'Confidence'] = category_data.get('confidence')
             
             if 'transaction_number' in category_data:
-                df.loc[item_id, 'TransactionNumber'] = category_data.get('transaction_number')
+                result_df.loc[item_id, 'TransactionNumber'] = category_data.get('transaction_number')
+        
+        return result_df
 
 
 class DataPipeline:
     def __init__(self, commands):
         self.commands = commands
+        
     def run(self, initial_df=None):
         df = initial_df
         for command in self.commands:
