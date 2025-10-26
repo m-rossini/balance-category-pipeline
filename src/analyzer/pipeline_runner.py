@@ -37,7 +37,6 @@ def main():
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), logging.INFO))
     
     # Setup metadata collection if enabled (with backward compatibility)
-    collector = None
     repository = None
     collect_metadata = getattr(args, 'collect_metadata', False)
     if collect_metadata:
@@ -45,29 +44,28 @@ def main():
         metadata_path = Path(metadata_dir) if metadata_dir else None
         repository = MetadataRepository(storage_path=metadata_path)
         
-        # Create PipelineMetadata instance and pass it to collector
+        # Create PipelineMetadata instance and inject into DataPipeline's collector
         from analyzer.pipeline.metadata import PipelineMetadata
         pipeline_metadata = PipelineMetadata(
             pipeline_name=args.workflow,
             start_time=datetime.now(),
             end_time=datetime.now()
         )
-        collector = MetadataCollector(
-            pipeline_name=args.workflow,
-            pipeline_metadata=pipeline_metadata
-        )
-    
-    pipeline = WORKFLOW_REGISTRY[args.workflow]()
-    
-    # If pipeline is DataPipeline and we have a collector, inject it
-    if isinstance(pipeline, DataPipeline) and collector:
-        pipeline.collector = collector
+        
+        # For DataPipeline, inject the metadata into its auto-created collector
+        # This allows reusing pipeline metadata across multiple steps
+        pipeline = WORKFLOW_REGISTRY[args.workflow]()
+        if isinstance(pipeline, DataPipeline):
+            pipeline.collector.pipeline_metadata = pipeline_metadata
+    else:
+        pipeline = WORKFLOW_REGISTRY[args.workflow]()
     
     logging.debug(f"[pipeline_runner] Workflow context: {getattr(pipeline, 'context', None)}")
     start_time = time.time()
     
-    # Run pipeline with optional repository
-    if isinstance(pipeline, DataPipeline) and repository:
+    # Run pipeline - DataPipeline always has a collector
+    # Repository is optional and used for persisting metadata
+    if isinstance(pipeline, DataPipeline):
         result_df = pipeline.run(repository=repository)
     else:
         result_df = pipeline.run()
@@ -80,8 +78,8 @@ def main():
         logging.info(f"[pipeline_runner] Workflow completed. Output rows: {len(result_df) if isinstance(result_df, pd.DataFrame) else 'N/A'}, total time: {elapsed:.2f} seconds")
     
     # Log metadata info if collected
-    if collector:
-        metadata = collector.get_pipeline_metadata()
+    if isinstance(pipeline, DataPipeline):
+        metadata = pipeline.collector.get_pipeline_metadata()
         if metadata:
             logging.info(f"[pipeline_runner] Metadata saved. Run ID: {metadata.run_id}")
 

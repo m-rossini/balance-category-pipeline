@@ -27,13 +27,15 @@ def test_data_pipeline_accepts_metadata_collector():
 
 
 def test_data_pipeline_with_no_collector():
-    """Test that DataPipeline works without a collector (backward compatible)."""
+    """Test that DataPipeline creates its own collector even when none provided."""
     commands = [SimpleCommand()]
     
-    # DataPipeline should work without collector
+    # DataPipeline creates its own collector
     pipeline = DataPipeline(commands)
     
-    assert pipeline.collector is None
+    assert pipeline.collector is not None
+    # Default name when created internally
+    assert pipeline.collector.pipeline_name == "DataPipeline"
 
 
 def test_data_pipeline_run_collects_metadata():
