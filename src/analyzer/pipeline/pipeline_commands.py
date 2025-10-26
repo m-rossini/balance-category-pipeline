@@ -12,6 +12,7 @@ from .categorization_types import (
     CategorizationContext, Transaction, CategorizationPayload,
     Category, CategorizationSuccess, CategorizationFailure, CategorizationResult
 )
+from .command_result import CommandResult
 
 # Decorator-based command registry
 COMMAND_REGISTRY = {}
@@ -21,7 +22,7 @@ def register_command(cls):
 
 class PipelineCommand(ABC):
     @abstractmethod
-    def process(self, df: pd.DataFrame) -> pd.DataFrame:
+    def process(self, df: pd.DataFrame) -> CommandResult:
         pass
 
 @register_command
