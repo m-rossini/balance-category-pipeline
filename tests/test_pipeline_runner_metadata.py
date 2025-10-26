@@ -8,8 +8,8 @@ from analyzer import pipeline_runner
 from analyzer.pipeline.metadata import MetadataRepository
 
 
-def test_pipeline_runner_accepts_metadata_flag(monkeypatch, caplog):
-    """Test that pipeline_runner accepts --collect-metadata flag."""
+def test_pipeline_runner_accepts_metadata_dir_flag(monkeypatch, caplog):
+    """Test that pipeline_runner accepts --metadata-dir flag."""
     with tempfile.TemporaryDirectory() as tmpdir:
         monkeypatch.setattr(
             pipeline_runner, 
@@ -17,7 +17,6 @@ def test_pipeline_runner_accepts_metadata_flag(monkeypatch, caplog):
             lambda: argparse.Namespace(
                 workflow='bank_transaction_analysis', 
                 log_level='DEBUG',
-                collect_metadata=True,
                 metadata_dir=tmpdir
             )
         )
@@ -39,31 +38,8 @@ def test_pipeline_runner_accepts_metadata_flag(monkeypatch, caplog):
         pipeline_runner.main()
 
 
-def test_pipeline_runner_metadata_disabled_by_default(monkeypatch):
-    """Test that metadata collection is disabled by default (backward compatible)."""
-    monkeypatch.setattr(
-        pipeline_runner, 
-        'parse_args', 
-        lambda: argparse.Namespace(
-            workflow='bank_transaction_analysis', 
-            log_level='INFO',
-            collect_metadata=False,
-            metadata_dir=None
-        )
-    )
-
-    class FakePipeline:
-        def run(self):
-            return pd.DataFrame([{'a': 1}])
-
-    monkeypatch.setattr(pipeline_runner, 'WORKFLOW_REGISTRY', {'bank_transaction_analysis': lambda: FakePipeline()})
-    
-    # Should not raise
-    pipeline_runner.main()
-
-
-def test_pipeline_runner_saves_metadata_when_enabled(monkeypatch):
-    """Test that metadata is saved when --collect-metadata flag is used."""
+def test_pipeline_runner_always_saves_metadata(monkeypatch):
+    """Test that metadata is always saved for DataPipeline (mandatory)."""
     with tempfile.TemporaryDirectory() as tmpdir:
         monkeypatch.setattr(
             pipeline_runner, 
@@ -71,7 +47,6 @@ def test_pipeline_runner_saves_metadata_when_enabled(monkeypatch):
             lambda: argparse.Namespace(
                 workflow='bank_transaction_analysis', 
                 log_level='INFO',
-                collect_metadata=True,
                 metadata_dir=tmpdir
             )
         )

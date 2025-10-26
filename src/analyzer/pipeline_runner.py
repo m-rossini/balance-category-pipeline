@@ -27,7 +27,6 @@ def parse_args():
                        choices=list(WORKFLOW_REGISTRY.keys()),
                        help='Workflow to run')
     parser.add_argument('--log-level', default='INFO', help='Logging level (e.g., DEBUG, INFO, WARNING)')
-    parser.add_argument('--collect-metadata', action='store_true', default=False, help='Collect metadata for pipeline execution')
     parser.add_argument('--metadata-dir', default=None, help='Directory to store metadata (defaults to ~/.metadata/pipelines)')
     return parser.parse_args()
 
@@ -36,35 +35,30 @@ def main():
     args = parse_args()
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), logging.INFO))
     
-    # Setup metadata collection if enabled (with backward compatibility)
-    repository = None
-    collect_metadata = getattr(args, 'collect_metadata', False)
-    if collect_metadata:
-        metadata_dir = getattr(args, 'metadata_dir', None)
-        metadata_path = Path(metadata_dir) if metadata_dir else None
-        repository = MetadataRepository(storage_path=metadata_path)
-        
-        # Create PipelineMetadata instance and inject into DataPipeline's collector
-        from analyzer.pipeline.metadata import PipelineMetadata
-        pipeline_metadata = PipelineMetadata(
-            pipeline_name=args.workflow,
-            start_time=datetime.now(),
-            end_time=datetime.now()
-        )
-        
-        # For DataPipeline, inject the metadata into its auto-created collector
-        # This allows reusing pipeline metadata across multiple steps
-        pipeline = WORKFLOW_REGISTRY[args.workflow]()
-        if isinstance(pipeline, DataPipeline):
-            pipeline.collector.pipeline_metadata = pipeline_metadata
-    else:
-        pipeline = WORKFLOW_REGISTRY[args.workflow]()
+    # Setup metadata collection (mandatory)
+    metadata_dir = getattr(args, 'metadata_dir', None)
+    metadata_path = Path(metadata_dir) if metadata_dir else None
+    repository = MetadataRepository(storage_path=metadata_path)
+    
+    # Create PipelineMetadata instance and inject into DataPipeline's collector
+    from analyzer.pipeline.metadata import PipelineMetadata
+    pipeline_metadata = PipelineMetadata(
+        pipeline_name=args.workflow,
+        start_time=datetime.now(),
+        end_time=datetime.now()
+    )
+    
+    pipeline = WORKFLOW_REGISTRY[args.workflow]()
+    
+    # For DataPipeline, inject the metadata into its auto-created collector
+    # Metadata collection is mandatory for all DataPipeline runs
+    if isinstance(pipeline, DataPipeline):
+        pipeline.collector.pipeline_metadata = pipeline_metadata
     
     logging.debug(f"[pipeline_runner] Workflow context: {getattr(pipeline, 'context', None)}")
     start_time = time.time()
     
-    # Run pipeline - DataPipeline always has a collector
-    # Repository is optional and used for persisting metadata
+    # Run pipeline - DataPipeline always has a collector and saves metadata
     if isinstance(pipeline, DataPipeline):
         result_df = pipeline.run(repository=repository)
     else:
@@ -77,7 +71,7 @@ def main():
     else:
         logging.info(f"[pipeline_runner] Workflow completed. Output rows: {len(result_df) if isinstance(result_df, pd.DataFrame) else 'N/A'}, total time: {elapsed:.2f} seconds")
     
-    # Log metadata info if collected
+    # Log metadata info (always collected for DataPipeline)
     if isinstance(pipeline, DataPipeline):
         metadata = pipeline.collector.get_pipeline_metadata()
         if metadata:
