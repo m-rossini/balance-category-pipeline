@@ -77,14 +77,17 @@ The AI uses context from `candidate_categories.json` and `transaction_type_codes
 Use the workflow runner with the `--workflow` option:
 
 ```bash
-# Run the default workflow
-make run-summaries
+# Run the default workflow (metadata collected to ~/.metadata/pipelines/)
+make transactions
 
 # Run a specific workflow
-make run-summaries WORKFLOW=minimal_load
+make transactions WORKFLOW=minimal_load
 
-# Or directly with python
-PYTHONPATH=src python -m analyzer.pipeline_runner --workflow bank_transaction_analysis --log-level INFO
+# Or directly with python (metadata mandatory)
+PYTHONPATH=src poetry run python -m analyzer.pipeline_runner --workflow bank_transaction_analysis --log-level INFO
+
+# Store metadata in a custom directory
+PYTHONPATH=src poetry run python -m analyzer.pipeline_runner --workflow bank_transaction_analysis --metadata-dir /tmp/my_metadata
 ```
 
 ### Adding New Workflows
@@ -114,3 +117,80 @@ WORKFLOW_REGISTRY = {
     # ... other workflows
 }
 ```
+
+## Metadata Collection
+
+All pipeline runs automatically collect execution metadata for monitoring and analysis:
+
+### What is Captured
+
+- **Pipeline Execution**: Run ID, workflow name, start/end times, total duration
+- **Step Details**: Each step captures:
+  - Step name
+  - Input/output row counts
+  - Processing duration
+  - Step parameters (if any)
+- **Quality Index**: Placeholder for data quality metrics
+- **Run History**: Permanent record with unique identification
+
+### Metadata Storage
+
+Metadata is automatically persisted to JSON files in `~/.metadata/pipelines/` by default.
+
+**Custom Storage Location:**
+
+```bash
+# Store metadata in a specific directory
+PYTHONPATH=src poetry run python -m analyzer.pipeline_runner \
+  --workflow bank_transaction_analysis \
+  --metadata-dir /var/log/pipeline_metadata
+```
+
+### Accessing Metadata
+
+Metadata files are stored with the naming pattern: `{run_id}_{workflow_name}_{timestamp}.json`
+
+Example metadata structure:
+
+```json
+{
+  "run_id": "abc123def456",
+  "pipeline_name": "bank_transaction_analysis",
+  "start_time": "2025-10-26T10:30:45.123456",
+  "end_time": "2025-10-26T10:35:12.654321",
+  "duration_seconds": 267.531,
+  "steps": [
+    {
+      "name": "AppendFilesCommand",
+      "start_time": "2025-10-26T10:30:45.123456",
+      "end_time": "2025-10-26T10:30:50.234567",
+      "duration_seconds": 5.111,
+      "input_rows": 0,
+      "output_rows": 12345,
+      "parameters": {}
+    }
+  ],
+  "quality_index": null
+}
+```
+
+### Using Metadata Programmatically
+
+```python
+from analyzer.pipeline.metadata import MetadataRepository
+from pathlib import Path
+
+# Load metadata from default location
+repo = MetadataRepository()
+
+# List all runs
+runs = repo.list_runs()
+print(f"Found {len(runs)} pipeline runs")
+
+# Load specific metadata
+metadata = repo.load(run_id="abc123def456")
+print(f"Pipeline: {metadata.pipeline_name}")
+print(f"Duration: {metadata.duration_seconds} seconds")
+print(f"Steps executed: {len(metadata.steps)}")
+```
+````

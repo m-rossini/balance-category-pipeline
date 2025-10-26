@@ -36,12 +36,21 @@ update:
 # Default workflow and log level for running workflows (overridable)
 WORKFLOW ?= bank_transaction_analysis
 LOG_LEVEL ?= INFO
+METADATA_DIR ?= 
 
 # Run the summaries workflow using the workflow runner
+# Metadata is mandatory and stored in ~/.metadata/pipelines/ by default
+# Use METADATA_DIR to customize storage location
 transactions:
-	PYTHONPATH=src poetry run python -m analyzer.pipeline_runner --workflow $(WORKFLOW) --log-level $(LOG_LEVEL)
+	PYTHONPATH=src poetry run python -m analyzer.pipeline_runner \
+		--workflow $(WORKFLOW) \
+		--log-level $(LOG_LEVEL) \
+		$(if $(METADATA_DIR),--metadata-dir $(METADATA_DIR),)
 
 ai-categorize:
-	PYTHONPATH=src poetry run python -m analyzer.pipeline_runner --workflow ai_categorization --log-level $(LOG_LEVEL) 
+	PYTHONPATH=src poetry run python -m analyzer.pipeline_runner \
+		--workflow ai_categorization \
+		--log-level $(LOG_LEVEL) \
+		$(if $(METADATA_DIR),--metadata-dir $(METADATA_DIR),)
 
 .PHONY: transactions ai-categorize

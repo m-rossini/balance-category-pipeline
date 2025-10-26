@@ -317,15 +317,49 @@ class AIRemoteCategorizationCommand(PipelineCommand):
 
 
 class DataPipeline:
-    def __init__(self, commands):
+    def __init__(self, commands, collector=None):
         self.commands = commands
+        # Always ensure we have a collector
+        if collector is None:
+            from analyzer.pipeline.metadata import MetadataCollector
+            self.collector = MetadataCollector(pipeline_name="DataPipeline")
+        else:
+            self.collector = collector
         
-    def run(self, initial_df=None):
+    def run(self, initial_df=None, repository=None):
         df = initial_df
+        
+        # Always start pipeline collection (collector is always present)
+        self.collector.start_pipeline()
+        
         for command in self.commands:
             logging.debug(f"[DataPipeline] Running step: {command.__class__.__name__}")
             start = time.time()
+            input_rows = len(df) if isinstance(df, pd.DataFrame) else 0
+            
             df = command.process(df)
+            
+            output_rows = len(df) if isinstance(df, pd.DataFrame) else 0
             elapsed = time.time() - start
             logging.debug(f"[DataPipeline] Step {command.__class__.__name__} completed in {elapsed:.4f} seconds")
+            
+            # Track step metadata (collector always present)
+            from analyzer.pipeline.metadata import StepMetadata
+            step_metadata = StepMetadata(
+                name=command.__class__.__name__,
+                input_rows=input_rows,
+                output_rows=output_rows,
+                duration=elapsed,
+                parameters={}
+            )
+            self.collector.track_step(step_metadata)
+        
+        # Always end collection (collector is always present)
+        self.collector.end_pipeline()
+        
+        # Save metadata if repository provided
+        if repository:
+            metadata = self.collector.get_pipeline_metadata()
+            repository.save(metadata)
+        
         return df
