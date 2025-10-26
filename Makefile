@@ -34,7 +34,6 @@ update:
 .PHONY: load run test lint format install update coverage
 
 # Default workflow and log level for running workflows (overridable)
-WORKFLOW ?= bank_transaction_analysis
 LOG_LEVEL ?= INFO
 METADATA_DIR ?= 
 
@@ -43,7 +42,7 @@ METADATA_DIR ?=
 # Use METADATA_DIR to customize storage location
 transactions:
 	PYTHONPATH=src poetry run python -m analyzer.pipeline_runner \
-		--workflow $(WORKFLOW) \
+		--workflow bank_transaction_analysis \
 		--log-level $(LOG_LEVEL) \
 		$(if $(METADATA_DIR),--metadata-dir $(METADATA_DIR),)
 

@@ -42,7 +42,10 @@ def get_pipeline():
             service_url=service_url,
             method="POST",
             headers={"Authorization": os.getenv('AI_SERVICE_API_KEY', '')},
-            data={"transactions": []},  # Will be populated with transaction data
+            impl="fixed",
+            batch_size=50,
+            max_errors=5,
+            data={"transactions": []}, 
             context=context
         ),
         SaveFileCommand(
