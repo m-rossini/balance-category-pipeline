@@ -121,7 +121,7 @@ class AppendFilesCommand(PipelineCommand):
         self.context = context or {}
         logging.debug(f"[AppendFilesCommand] Initialized with input_dir={self.input_dir}, file_glob={self.file_glob}, input_files={self.input_files}")  
 
-    def process(self, df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+    def process(self, df: Optional[pd.DataFrame] = None) -> CommandResult:
         logging.debug(f"[AppendFilesCommand] Starting append. input_dir={self.input_dir} file_glob={self.file_glob}")
 
         files = []
@@ -132,12 +132,12 @@ class AppendFilesCommand(PipelineCommand):
             files = [f for f in Path(self.input_dir).glob(self.file_glob) if self.file_filter(f)]
         else:
             logging.error("[AppendFilesCommand] No input_dir or input_files provided.")
-            return pd.DataFrame()
+            return CommandResult(return_code=-1, data=None, error={"message": "No input_dir or input_files provided"})
 
         logging.debug(f"[AppendFilesCommand] Found {len(files)} files before filtering.")
         if not files:
             logging.warning(f"[AppendFilesCommand] No files found (input_dir={self.input_dir}, input_files={self.input_files}).")
-            return pd.DataFrame()
+            return CommandResult(return_code=-1, data=None, error={"message": "No files found"})
 
         # Sort to reverse the order: latest files first
         files_sorted = sorted(files, key=lambda x: x.name, reverse=True)
@@ -151,11 +151,11 @@ class AppendFilesCommand(PipelineCommand):
                 logging.error(f"[AppendFilesCommand] Failed to read {f}: {e}")
         if not dfs:
             logging.error("[AppendFilesCommand] No readable files produced DataFrames.")
-            return pd.DataFrame()
+            return CommandResult(return_code=-1, data=None, error={"message": "No readable files"})
 
         combined = pd.concat(dfs, ignore_index=True)
         logging.info(f"[AppendFilesCommand] Appended {len(dfs)} files, resulting rows: {len(combined)}")
-        return combined
+        return CommandResult(return_code=0, data=combined)
 
 @register_command
 class SaveFileCommand(PipelineCommand):

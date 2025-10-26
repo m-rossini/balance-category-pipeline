@@ -45,10 +45,14 @@ def test_append_files_command_with_realistic_data():
         command = AppendFilesCommand(input_dir=temp_path)
         result = command.process()
 
+        # Extract data from CommandResult
+        assert result.return_code == 0
+        df = result.data
+
         # Assert the data is loaded in descending date order across all files
         expected_dates = [
             "2025-12-31", "2025-12-30", "2025-12-29",
             "2024-11-15", "2024-11-15", "2024-11-14",
             "2023-10-10", "2023-10-09", "2023-10-08"
         ]
-        assert result["TransactionDate"].tolist() == expected_dates, "Dates should be in descending order across all files."
+        assert df["TransactionDate"].tolist() == expected_dates, "Dates should be in descending order across all files."
