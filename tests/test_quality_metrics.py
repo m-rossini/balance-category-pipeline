@@ -1,6 +1,6 @@
 """Tests for quality metrics data structure and calculations."""
 import pytest
-from analyzer.pipeline.quality_metrics import QualityMetrics
+from analyzer.workflows.quality_metrics import QualityMetrics
 
 
 def test_quality_metrics_completeness_score():
