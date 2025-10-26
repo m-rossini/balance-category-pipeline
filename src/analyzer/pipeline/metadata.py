@@ -2,6 +2,8 @@
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 import uuid
+import json
+from pathlib import Path
 
 
 class StepMetadata:
@@ -162,5 +164,100 @@ class MetadataCollector:
         """Context manager exit - end pipeline collection."""
         self.end_pipeline()
         return False
+
+
+class MetadataRepository:
+    """Manages persistence of pipeline metadata."""
+    
+    def __init__(self, storage_path: Optional[Path] = None):
+        """Initialize metadata repository.
+        
+        Args:
+            storage_path: Where to store metadata files. Defaults to .metadata in user home.
+        """
+        if storage_path is None:
+            storage_path = Path.home() / ".metadata" / "pipelines"
+        
+        self.storage_path = Path(storage_path)
+    
+    def save(self, pipeline_metadata: PipelineMetadata) -> str:
+        """Save pipeline metadata to storage.
+        
+        Args:
+            pipeline_metadata: The metadata to save
+            
+        Returns:
+            The run_id of the saved metadata
+        """
+        # Create storage directory if it doesn't exist
+        self.storage_path.mkdir(parents=True, exist_ok=True)
+        
+        # Save to file using run_id as filename
+        file_path = self.storage_path / f"{pipeline_metadata.run_id}.json"
+        
+        with open(file_path, 'w') as f:
+            json.dump(pipeline_metadata.to_dict(), f, indent=2)
+        
+        return pipeline_metadata.run_id
+    
+    def load(self, run_id: str) -> Optional[PipelineMetadata]:
+        """Load pipeline metadata from storage.
+        
+        Args:
+            run_id: The run_id to load
+            
+        Returns:
+            The loaded PipelineMetadata or None if not found
+        """
+        file_path = self.storage_path / f"{run_id}.json"
+        
+        if not file_path.exists():
+            return None
+        
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        
+        # Reconstruct PipelineMetadata from dict
+        pipeline = PipelineMetadata(
+            pipeline_name=data["pipeline_name"],
+            start_time=datetime.fromisoformat(data["start_time"]),
+            end_time=datetime.fromisoformat(data["end_time"]),
+            quality_index=data.get("quality_index")
+        )
+        pipeline.run_id = data["run_id"]
+        pipeline.input_rows = data.get("input_rows")
+        pipeline.output_rows = data.get("output_rows")
+        
+        # Reconstruct steps
+        for step_data in data.get("steps", []):
+            step = StepMetadata(
+                name=step_data["name"],
+                input_rows=step_data["input_rows"],
+                output_rows=step_data["output_rows"],
+                duration=step_data.get("duration"),
+                start_time=datetime.fromisoformat(step_data["start_time"]) if step_data.get("start_time") else None,
+                end_time=datetime.fromisoformat(step_data["end_time"]) if step_data.get("end_time") else None,
+                parameters=step_data.get("parameters", {})
+            )
+            pipeline.add_step(step)
+        
+        return pipeline
+    
+    def list_runs(self) -> List[str]:
+        """List all saved run IDs.
+        
+        Returns:
+            List of run_ids in storage
+        """
+        if not self.storage_path.exists():
+            return []
+        
+        runs = []
+        for file_path in self.storage_path.glob("*.json"):
+            run_id = file_path.stem
+            runs.append(run_id)
+        
+        return sorted(runs)
+
 
 

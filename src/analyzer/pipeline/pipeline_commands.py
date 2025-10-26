@@ -317,8 +317,9 @@ class AIRemoteCategorizationCommand(PipelineCommand):
 
 
 class DataPipeline:
-    def __init__(self, commands):
+    def __init__(self, commands, collector=None):
         self.commands = commands
+        self.collector = collector
         
     def run(self, initial_df=None):
         df = initial_df
