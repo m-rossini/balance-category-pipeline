@@ -116,22 +116,25 @@ class PipelineMetadata:
 class MetadataCollector:
     """Collects metadata during pipeline execution."""
     
-    def __init__(self, pipeline_name: str):
+    def __init__(self, pipeline_name: str, pipeline_metadata: Optional[PipelineMetadata] = None):
         """Initialize metadata collector.
         
         Args:
             pipeline_name: Name of the pipeline being executed
+            pipeline_metadata: Optional existing PipelineMetadata instance to reuse
         """
         self.pipeline_name = pipeline_name
-        self.pipeline_metadata: Optional[PipelineMetadata] = None
+        self.pipeline_metadata = pipeline_metadata
     
     def start_pipeline(self) -> None:
         """Start collecting pipeline metadata."""
-        self.pipeline_metadata = PipelineMetadata(
-            pipeline_name=self.pipeline_name,
-            start_time=datetime.now(),
-            end_time=datetime.now()
-        )
+        # If metadata not provided, create a new one
+        if self.pipeline_metadata is None:
+            self.pipeline_metadata = PipelineMetadata(
+                pipeline_name=self.pipeline_name,
+                start_time=datetime.now(),
+                end_time=datetime.now()
+            )
     
     def end_pipeline(self) -> None:
         """End collecting pipeline metadata."""

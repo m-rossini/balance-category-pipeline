@@ -2,6 +2,7 @@ import argparse
 import logging
 import pandas as pd
 import time
+from datetime import datetime
 from pathlib import Path
 from analyzer.pipeline.pipeline_commands import (
     DataPipeline, AppendFilesCommand, CleanDataCommand,
@@ -43,7 +44,18 @@ def main():
         metadata_dir = getattr(args, 'metadata_dir', None)
         metadata_path = Path(metadata_dir) if metadata_dir else None
         repository = MetadataRepository(storage_path=metadata_path)
-        collector = MetadataCollector(pipeline_name=args.workflow)
+        
+        # Create PipelineMetadata instance and pass it to collector
+        from analyzer.pipeline.metadata import PipelineMetadata
+        pipeline_metadata = PipelineMetadata(
+            pipeline_name=args.workflow,
+            start_time=datetime.now(),
+            end_time=datetime.now()
+        )
+        collector = MetadataCollector(
+            pipeline_name=args.workflow,
+            pipeline_metadata=pipeline_metadata
+        )
     
     pipeline = WORKFLOW_REGISTRY[args.workflow]()
     
