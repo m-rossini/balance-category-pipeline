@@ -320,60 +320,6 @@ class AIRemoteCategorizationCommand(PipelineCommand):
         return result_df
 
 
-class DataPipeline:
-    def __init__(self, commands, collector=None):
-        self.commands = commands
-        # Always ensure we have a collector
-        if collector is None:
-            from analyzer.pipeline.metadata import MetadataCollector
-            self.collector = MetadataCollector(pipeline_name="DataPipeline")
-        else:
-            self.collector = collector
-        
-    def run(self, initial_df=None, repository=None):
-        df = initial_df
-        
-        # Always start pipeline collection (collector is always present)
-        self.collector.start_pipeline()
-        
-        for command in self.commands:
-            logging.debug(f"[DataPipeline] Running step: {command.__class__.__name__}")
-            from datetime import datetime
-            start_time = datetime.now()
-            start = time.time()
-            input_rows = len(df) if isinstance(df, pd.DataFrame) else 0
-            
-            df = command.process(df)
-            
-            end_time = datetime.now()
-            output_rows = len(df) if isinstance(df, pd.DataFrame) else 0
-            elapsed = time.time() - start
-            logging.debug(f"[DataPipeline] Step {command.__class__.__name__} completed in {elapsed:.4f} seconds")
-            
-            # Track step metadata (collector always present)
-            from analyzer.pipeline.metadata import StepMetadata
-            step_metadata = StepMetadata(
-                name=command.__class__.__name__,
-                input_rows=input_rows,
-                output_rows=output_rows,
-                duration=elapsed,
-                start_time=start_time,
-                end_time=end_time,
-                parameters={}
-            )
-            self.collector.track_step(step_metadata)
-        
-        # Always end collection (collector is always present)
-        self.collector.end_pipeline()
-        
-        # Save metadata if repository provided
-        if repository:
-            metadata = self.collector.get_pipeline_metadata()
-            repository.save(metadata)
-        
-        return df
-
-
 @register_command
 class QualityAnalysisCommand(PipelineCommand):
     """Analyzes data quality of Category, SubCategory, and Confidence columns."""
@@ -505,3 +451,58 @@ class QualityAnalysisCommand(PipelineCommand):
         consistency_rate = (consistent.sum() / has_subcategory.sum() * 100) if has_subcategory.sum() > 0 else 100.0
         
         return consistency_rate
+
+class DataPipeline:
+    def __init__(self, commands, collector=None):
+        self.commands = commands
+        # Always ensure we have a collector
+        if collector is None:
+            from analyzer.pipeline.metadata import MetadataCollector
+            self.collector = MetadataCollector(pipeline_name="DataPipeline")
+        else:
+            self.collector = collector
+        
+    def run(self, initial_df=None, repository=None):
+        df = initial_df
+        
+        # Always start pipeline collection (collector is always present)
+        self.collector.start_pipeline()
+        
+        for command in self.commands:
+            logging.debug(f"[DataPipeline] Running step: {command.__class__.__name__}")
+            from datetime import datetime
+            start_time = datetime.now()
+            start = time.time()
+            input_rows = len(df) if isinstance(df, pd.DataFrame) else 0
+            
+            df = command.process(df)
+            
+            end_time = datetime.now()
+            output_rows = len(df) if isinstance(df, pd.DataFrame) else 0
+            elapsed = time.time() - start
+            logging.debug(f"[DataPipeline] Step {command.__class__.__name__} completed in {elapsed:.4f} seconds")
+            
+            # Track step metadata (collector always present)
+            from analyzer.pipeline.metadata import StepMetadata
+            step_metadata = StepMetadata(
+                name=command.__class__.__name__,
+                input_rows=input_rows,
+                output_rows=output_rows,
+                duration=elapsed,
+                start_time=start_time,
+                end_time=end_time,
+                parameters={}
+            )
+            self.collector.track_step(step_metadata)
+        
+        # Always end collection (collector is always present)
+        self.collector.end_pipeline()
+        
+        # Save metadata if repository provided
+        if repository:
+            metadata = self.collector.get_pipeline_metadata()
+            repository.save(metadata)
+        
+        return df
+
+
