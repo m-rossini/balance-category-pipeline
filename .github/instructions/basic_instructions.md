@@ -12,11 +12,16 @@ applyTo: '**'
 * For Designning a Solution:
     * Take a TDD approach: write tests first, then write code to make the tests pass, and show each step before proceeding to the next.
     * Follow the SOLID principles of software development.
+    * Use the best practices of software engineer, balancing for good engineering without over engineering
 
 * For Coding:
     * TRY TO KEEP LOGGING STATEMENTS INTO A single LINE
     * Add type hints and maintain them updated
     * Imports ALWAYS goes to the top of the file
+    * Start with test that fails and move from ther in TDD fashion
+    * use extreme programming paradigm when coding and consider myself as your senior peer/counterpart
+    * ALWAYS go step by step, do not create multiple files at same time, do not create multiple classes at same time
+    * NEVER Create a whole solution end to end. Give small baby steps towards the end goal.
 
 * For testing follow the below instructions
     * When creating tests, always run first the ones you just created, and if they pass, then run all the tests.
