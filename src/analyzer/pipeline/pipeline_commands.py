@@ -90,16 +90,18 @@ class CleanDataCommand(PipelineCommand):
         # accept context for compatibility with workflows
         self.context = context or {}
         self.functions = functions or [CleanDataCommand.default_clean]
-    def process(self, df: pd.DataFrame) -> pd.DataFrame:
+    
+    def process(self, df: pd.DataFrame) -> CommandResult:
         logging.debug(f"[CleanDataCommand] Starting cleaning. Input shape: {df.shape}")
         if df.empty:
             logging.warning("No data to clean.")
-            return df
+            return CommandResult(return_code=0, data=df)
         for fn in self.functions:
             df = fn(df)
         logging.debug(f"[CleanDataCommand] Cleaned DataFrame shape: {df.shape}")
         logging.info(f"Cleaned data: {len(df)} rows remain after cleaning.")
-        return df
+        return CommandResult(return_code=0, data=df)
+    
     @staticmethod
     def default_clean(df: pd.DataFrame) -> pd.DataFrame:
         return df

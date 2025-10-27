@@ -247,8 +247,9 @@ class TestDataPipelineIntegration:
         """Test CleanDataCommand uses default_clean when no functions provided."""
         df = pd.DataFrame({'col1': [1, 2], 'col2': ['a', 'b']})
         clean_command = CleanDataCommand(functions=None)
-        result_df = clean_command.process(df)
-        assert result_df.equals(df)  # default_clean just returns df
+        result = clean_command.process(df)
+        assert result.return_code == 0
+        assert result.data.equals(df)  # default_clean just returns df
 
     def test_append_files_command_input_files_branch(self):
         """Test AppendFilesCommand using input_files parameter."""
