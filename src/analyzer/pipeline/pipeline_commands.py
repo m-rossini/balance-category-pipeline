@@ -40,7 +40,6 @@ class MergeFilesCommand(PipelineCommand):
 
     def process(self, df=None) -> CommandResult:
         if df is None or not self.input_file:
-            logging.error("[MergeFilesCommand] Missing input DataFrame or input file.")
             return CommandResult(return_code=-1, data=None, error={"message": "Missing input DataFrame or input file"})
 
         try:
@@ -81,7 +80,6 @@ class MergeFilesCommand(PipelineCommand):
             logging.info(f"[MergeFilesCommand] Merge completed. Resulting rows: {len(merged)}")
             return CommandResult(return_code=0, data=merged)
         except Exception as e:
-            logging.error(f"[MergeFilesCommand] Failed to merge: {e}")
             return CommandResult(return_code=-1, data=None, error={"message": str(e)})
 
 @register_command
@@ -133,12 +131,10 @@ class AppendFilesCommand(PipelineCommand):
             logging.debug(f"[AppendFilesCommand] Listing files in directory: {self.input_dir} with glob: {self.file_glob}")
             files = [f for f in Path(self.input_dir).glob(self.file_glob) if self.file_filter(f)]
         else:
-            logging.error("[AppendFilesCommand] No input_dir or input_files provided.")
             return CommandResult(return_code=-1, data=None, error={"message": "No input_dir or input_files provided"})
 
         logging.debug(f"[AppendFilesCommand] Found {len(files)} files before filtering.")
         if not files:
-            logging.warning(f"[AppendFilesCommand] No files found (input_dir={self.input_dir}, input_files={self.input_files}).")
             return CommandResult(return_code=-1, data=None, error={"message": "No files found"})
 
         # Sort to reverse the order: latest files first
@@ -151,8 +147,8 @@ class AppendFilesCommand(PipelineCommand):
                 dfs.append(df_piece)
             except Exception as e:
                 logging.error(f"[AppendFilesCommand] Failed to read {f}: {e}")
+        
         if not dfs:
-            logging.error("[AppendFilesCommand] No readable files produced DataFrames.")
             return CommandResult(return_code=-1, data=None, error={"message": "No readable files"})
 
         combined = pd.concat(dfs, ignore_index=True)
@@ -165,15 +161,17 @@ class SaveFileCommand(PipelineCommand):
         self.output_path = Path(output_path)
         self.save_empty = save_empty
         self.context = context or {}
-    def process(self, df: pd.DataFrame) -> pd.DataFrame:
-        logging.debug(f"[SaveFileCommand] Saving DataFrame with shape: {df.shape} to {self.output_path}")
-        if df.empty and not self.save_empty:
-            logging.info(f"[SaveFileCommand] DataFrame empty and save_empty=False; skipping save to {self.output_path}")
-            return df
-        self.output_path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(str(self.output_path), index=False)
-        logging.info(f"Saved output to {self.output_path} ({len(df)} rows)")
-        return df
+    
+    def process(self, df: pd.DataFrame) -> CommandResult:
+        try:
+            if df.empty and not self.save_empty:
+                return CommandResult(return_code=0, data=df)
+            self.output_path.parent.mkdir(parents=True, exist_ok=True)
+            df.to_csv(str(self.output_path), index=False)
+            logging.info(f"[SaveFileCommand] Saved to {self.output_path} ({len(df)}) rows")
+            return CommandResult(return_code=0, data=df)
+        except Exception as e:
+            return CommandResult(return_code=-1, data=None, error={"message": str(e)})
 
 
 @register_command
