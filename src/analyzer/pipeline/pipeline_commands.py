@@ -186,40 +186,40 @@ class AIRemoteCategorizationCommand(PipelineCommand):
         self.max_errors = max_errors
         self.impl = impl
 
-    def process(self, df: pd.DataFrame) -> pd.DataFrame:
+    def process(self, df: pd.DataFrame) -> CommandResult:
         """Process DataFrame by calling remote categorization API in batches."""
+        logging.info(f"[AIRemoteCategorizationCommand] Processing {len(df)} records in batches of {self.batch_size}")        
         if len(df) == 0:
-            return df
+            return CommandResult(return_code=0, data=df)
 
-        logging.info(f"[AIRemoteCategorizationCommand] Processing {len(df)} records in batches of {self.batch_size}")
+        try:
+            context_list = self._load_context()
 
-        # Step 1: Load context
-        context_list = self._load_context()
-
-        # Step 2: Process batches
-        error_count = 0
-        for start in range(0, len(df), self.batch_size):
+            error_count = 0
+            start = 0
+            while start < len(df) and error_count < self.max_errors:
+                end = min(start + self.batch_size, len(df))
+                batch_df = df.iloc[start:end]
+                
+                transactions = self._build_transactions(batch_df)
+                payload = {"context": context_list, "transactions": transactions}
+                
+                response_data = self._call_api(payload, start, end)
+                
+                if response_data:
+                    df = self._merge_results(df, response_data)
+                else:
+                    error_count += 1
+                
+                start += self.batch_size
+            
             if error_count >= self.max_errors:
                 logging.error(f"[AIRemoteCategorizationCommand] Stopping after {error_count} errors (max: {self.max_errors})")
-                break
-            
-            end = min(start + self.batch_size, len(df))
-            batch_df = df.iloc[start:end]
-            
-            # Step 3: Build and send batch
-            transactions = self._build_transactions(batch_df)
-            payload = {"context": context_list, "transactions": transactions}
-            
-            # Step 4: Call API
-            response_data = self._call_api(payload, start, end)
-            
-            # Step 5: Merge results
-            if response_data:
-                df = self._merge_results(df, response_data)
-            else:
-                error_count += 1
 
-        return df
+            logging.debug(f"[AIRemoteCategorizationCommand] Completed processing {len(df)} records")
+            return CommandResult(return_code=0, data=df)
+        except Exception as e:
+            return CommandResult(return_code=-1, data=None, error={"message": str(e)})
 
     def _load_context(self) -> List[Dict]:
         """Load all context files (driver method)."""
@@ -252,17 +252,20 @@ class AIRemoteCategorizationCommand(PipelineCommand):
 
     def _build_transactions(self, batch_df: pd.DataFrame) -> List[Dict]:
         """Convert DataFrame batch to transaction list."""
-        # Select and rename columns for API payload
-        selected_df = batch_df[['TransactionDescription', 'TransactionValue', 'TransactionDate', 'TransactionType']].copy()
-        selected_df.columns = ['description', 'amount', 'date', 'type']
-        
-        # Add id column based on index
-        selected_df['id'] = selected_df.index.astype(str)
-        
-        # Convert to list of dicts with proper field order
-        transactions = selected_df[['id', 'description', 'amount', 'date', 'type']].to_dict(orient='records')
-        logging.debug(f"[AIRemoteCategorizationCommand] Built {len(transactions)} transactions from batch of {len(batch_df)} rows")
-        return transactions
+        try:
+            # Select and rename columns for API payload
+            selected_df = batch_df[['TransactionDescription', 'TransactionValue', 'TransactionDate', 'TransactionType']].copy()
+            selected_df.columns = ['description', 'amount', 'date', 'type']
+            
+            # Add id column based on index
+            selected_df['id'] = selected_df.index.astype(str)
+            
+            # Convert to list of dicts with proper field order
+            transactions = selected_df[['id', 'description', 'amount', 'date', 'type']].to_dict(orient='records')
+            logging.debug(f"[AIRemoteCategorizationCommand] Built {len(transactions)} transactions from batch of {len(batch_df)} rows")
+            return transactions
+        except Exception as e:
+            raise ValueError(f"Failed to build transactions: {e}") from e
 
     def _call_api(self, payload: Dict, batch_start: int, batch_end: int) -> Optional[Dict]:
         """Call remote API with payload and return response data."""
