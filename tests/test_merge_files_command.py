@@ -34,7 +34,15 @@ def test_merge_files_command():
             merge_command = MergeFilesCommand(input_file=factoids_file.name, on_columns=['TransactionNumber'])
 
             # Process the merge
-            result_df = merge_command.process(data_df)
+            result = merge_command.process(data_df)
+            
+            # Assert CommandResult structure
+            assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
+            assert result.data is not None, "Expected data to be not None"
+            assert result.error is None, f"Expected error=None, got {result.error}"
+            # context_updates and metadata_updates are optional
+            
+            result_df = result.data
 
             # Debug output on failure: print original, factoids and result
             def debug_print():

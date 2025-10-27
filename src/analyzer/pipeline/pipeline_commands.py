@@ -12,6 +12,7 @@ from .categorization_types import (
     CategorizationContext, Transaction, CategorizationPayload,
     Category, CategorizationSuccess, CategorizationFailure, CategorizationResult
 )
+from .command_result import CommandResult
 
 # Decorator-based command registry
 COMMAND_REGISTRY = {}
@@ -21,7 +22,7 @@ def register_command(cls):
 
 class PipelineCommand(ABC):
     @abstractmethod
-    def process(self, df: pd.DataFrame) -> pd.DataFrame:
+    def process(self, df: pd.DataFrame) -> CommandResult:
         pass
 
 @register_command
@@ -37,10 +38,9 @@ class MergeFilesCommand(PipelineCommand):
         self.file_glob = file_glob
         self.context = context or {}
 
-    def process(self, df=None):
+    def process(self, df=None) -> CommandResult:
         if df is None or not self.input_file:
-            logging.error("[MergeFilesCommand] Missing input DataFrame or input file.")
-            return pd.DataFrame()
+            return CommandResult(return_code=-1, data=None, error={"message": "Missing input DataFrame or input file"})
 
         try:
             logging.debug(f"[MergeFilesCommand] Merging with {self.input_file} on {self.on_columns}")
@@ -78,10 +78,9 @@ class MergeFilesCommand(PipelineCommand):
                 merged.drop(columns=['Confidence_trained'], inplace=True)
 
             logging.info(f"[MergeFilesCommand] Merge completed. Resulting rows: {len(merged)}")
-            return merged
+            return CommandResult(return_code=0, data=merged)
         except Exception as e:
-            logging.error(f"[MergeFilesCommand] Failed to merge: {e}")
-            return df
+            return CommandResult(return_code=-1, data=None, error={"message": str(e)})
 
 @register_command
 class CleanDataCommand(PipelineCommand):
@@ -89,16 +88,18 @@ class CleanDataCommand(PipelineCommand):
         # accept context for compatibility with workflows
         self.context = context or {}
         self.functions = functions or [CleanDataCommand.default_clean]
-    def process(self, df: pd.DataFrame) -> pd.DataFrame:
+    
+    def process(self, df: pd.DataFrame) -> CommandResult:
         logging.debug(f"[CleanDataCommand] Starting cleaning. Input shape: {df.shape}")
         if df.empty:
             logging.warning("No data to clean.")
-            return df
+            return CommandResult(return_code=0, data=df)
         for fn in self.functions:
             df = fn(df)
         logging.debug(f"[CleanDataCommand] Cleaned DataFrame shape: {df.shape}")
         logging.info(f"Cleaned data: {len(df)} rows remain after cleaning.")
-        return df
+        return CommandResult(return_code=0, data=df)
+    
     @staticmethod
     def default_clean(df: pd.DataFrame) -> pd.DataFrame:
         return df
@@ -120,7 +121,7 @@ class AppendFilesCommand(PipelineCommand):
         self.context = context or {}
         logging.debug(f"[AppendFilesCommand] Initialized with input_dir={self.input_dir}, file_glob={self.file_glob}, input_files={self.input_files}")  
 
-    def process(self, df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+    def process(self, df: Optional[pd.DataFrame] = None) -> CommandResult:
         logging.debug(f"[AppendFilesCommand] Starting append. input_dir={self.input_dir} file_glob={self.file_glob}")
 
         files = []
@@ -130,13 +131,11 @@ class AppendFilesCommand(PipelineCommand):
             logging.debug(f"[AppendFilesCommand] Listing files in directory: {self.input_dir} with glob: {self.file_glob}")
             files = [f for f in Path(self.input_dir).glob(self.file_glob) if self.file_filter(f)]
         else:
-            logging.error("[AppendFilesCommand] No input_dir or input_files provided.")
-            return pd.DataFrame()
+            return CommandResult(return_code=-1, data=None, error={"message": "No input_dir or input_files provided"})
 
         logging.debug(f"[AppendFilesCommand] Found {len(files)} files before filtering.")
         if not files:
-            logging.warning(f"[AppendFilesCommand] No files found (input_dir={self.input_dir}, input_files={self.input_files}).")
-            return pd.DataFrame()
+            return CommandResult(return_code=-1, data=None, error={"message": "No files found"})
 
         # Sort to reverse the order: latest files first
         files_sorted = sorted(files, key=lambda x: x.name, reverse=True)
@@ -148,13 +147,13 @@ class AppendFilesCommand(PipelineCommand):
                 dfs.append(df_piece)
             except Exception as e:
                 logging.error(f"[AppendFilesCommand] Failed to read {f}: {e}")
+        
         if not dfs:
-            logging.error("[AppendFilesCommand] No readable files produced DataFrames.")
-            return pd.DataFrame()
+            return CommandResult(return_code=-1, data=None, error={"message": "No readable files"})
 
         combined = pd.concat(dfs, ignore_index=True)
         logging.info(f"[AppendFilesCommand] Appended {len(dfs)} files, resulting rows: {len(combined)}")
-        return combined
+        return CommandResult(return_code=0, data=combined)
 
 @register_command
 class SaveFileCommand(PipelineCommand):
@@ -162,15 +161,17 @@ class SaveFileCommand(PipelineCommand):
         self.output_path = Path(output_path)
         self.save_empty = save_empty
         self.context = context or {}
-    def process(self, df: pd.DataFrame) -> pd.DataFrame:
-        logging.debug(f"[SaveFileCommand] Saving DataFrame with shape: {df.shape} to {self.output_path}")
-        if df.empty and not self.save_empty:
-            logging.info(f"[SaveFileCommand] DataFrame empty and save_empty=False; skipping save to {self.output_path}")
-            return df
-        self.output_path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(str(self.output_path), index=False)
-        logging.info(f"Saved output to {self.output_path} ({len(df)} rows)")
-        return df
+    
+    def process(self, df: pd.DataFrame) -> CommandResult:
+        try:
+            if df.empty and not self.save_empty:
+                return CommandResult(return_code=0, data=df)
+            self.output_path.parent.mkdir(parents=True, exist_ok=True)
+            df.to_csv(str(self.output_path), index=False)
+            logging.info(f"[SaveFileCommand] Saved to {self.output_path} ({len(df)}) rows")
+            return CommandResult(return_code=0, data=df)
+        except Exception as e:
+            return CommandResult(return_code=-1, data=None, error={"message": str(e)})
 
 
 @register_command
@@ -185,40 +186,40 @@ class AIRemoteCategorizationCommand(PipelineCommand):
         self.max_errors = max_errors
         self.impl = impl
 
-    def process(self, df: pd.DataFrame) -> pd.DataFrame:
+    def process(self, df: pd.DataFrame) -> CommandResult:
         """Process DataFrame by calling remote categorization API in batches."""
+        logging.info(f"[AIRemoteCategorizationCommand] Processing {len(df)} records in batches of {self.batch_size}")        
         if len(df) == 0:
-            return df
+            return CommandResult(return_code=0, data=df)
 
-        logging.info(f"[AIRemoteCategorizationCommand] Processing {len(df)} records in batches of {self.batch_size}")
+        try:
+            context_list = self._load_context()
 
-        # Step 1: Load context
-        context_list = self._load_context()
-
-        # Step 2: Process batches
-        error_count = 0
-        for start in range(0, len(df), self.batch_size):
+            error_count = 0
+            start = 0
+            while start < len(df) and error_count < self.max_errors:
+                end = min(start + self.batch_size, len(df))
+                batch_df = df.iloc[start:end]
+                
+                transactions = self._build_transactions(batch_df)
+                payload = {"context": context_list, "transactions": transactions}
+                
+                response_data = self._call_api(payload, start, end)
+                
+                if response_data:
+                    df = self._merge_results(df, response_data)
+                else:
+                    error_count += 1
+                
+                start += self.batch_size
+            
             if error_count >= self.max_errors:
                 logging.error(f"[AIRemoteCategorizationCommand] Stopping after {error_count} errors (max: {self.max_errors})")
-                break
-            
-            end = min(start + self.batch_size, len(df))
-            batch_df = df.iloc[start:end]
-            
-            # Step 3: Build and send batch
-            transactions = self._build_transactions(batch_df)
-            payload = {"context": context_list, "transactions": transactions}
-            
-            # Step 4: Call API
-            response_data = self._call_api(payload, start, end)
-            
-            # Step 5: Merge results
-            if response_data:
-                df = self._merge_results(df, response_data)
-            else:
-                error_count += 1
 
-        return df
+            logging.debug(f"[AIRemoteCategorizationCommand] Completed processing {len(df)} records")
+            return CommandResult(return_code=0, data=df)
+        except Exception as e:
+            return CommandResult(return_code=-1, data=None, error={"message": str(e)})
 
     def _load_context(self) -> List[Dict]:
         """Load all context files (driver method)."""
@@ -337,7 +338,19 @@ class DataPipeline:
             start = time.time()
             input_rows = len(df) if isinstance(df, pd.DataFrame) else 0
             
-            df = command.process(df)
+            result = command.process(df)
+            
+            # Handle CommandResult
+            if isinstance(result, CommandResult):
+                # Check return code - halt on negative codes
+                if result.return_code < 0:
+                    logging.error(f"[DataPipeline] Command {command.__class__.__name__} failed with return_code={result.return_code}: {result.error}")
+                    # Return empty DataFrame to indicate failure
+                    return pd.DataFrame()
+                df = result.data
+            else:
+                # Fallback for legacy DataFrame returns
+                df = result
             
             output_rows = len(df) if isinstance(df, pd.DataFrame) else 0
             elapsed = time.time() - start

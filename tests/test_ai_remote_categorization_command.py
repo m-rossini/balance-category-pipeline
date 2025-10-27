@@ -90,7 +90,14 @@ class TestAIRemoteCategorization:
         )
 
         # Execute
-        result_df = command.process(df)
+        result = command.process(df)
+        
+        # Assert CommandResult structure
+        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
+        assert result.data is not None, "Expected data to be not None"
+        assert result.error is None, f"Expected error=None, got {result.error}"
+        
+        result_df = result.data
 
         # Output validation: some rows should have categories
         assert isinstance(result_df, pd.DataFrame)
@@ -132,7 +139,14 @@ class TestAIRemoteCategorization:
         )
 
         # Execute
-        result_df = command.process(df)
+        result = command.process(df)
+        
+        # Assert CommandResult structure
+        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
+        assert result.data is not None, "Expected data to be not None"
+        assert result.error is None, f"Expected error=None, got {result.error}"
+        
+        result_df = result.data
 
         # Output validation: no categories should be populated
         assert isinstance(result_df, pd.DataFrame)
@@ -161,9 +175,16 @@ class TestAIRemoteCategorization:
         )
 
         # Execute (should not raise exception)
-        result_df = command.process(df)
+        result = command.process(df)
+        
+        # Assert CommandResult structure - batch failures are handled gracefully (return_code=0, data returned)
+        assert result.return_code == 0, f"Expected return_code=0 (graceful failure handling), got {result.return_code}"
+        assert result.data is not None, "Expected data to be not None (returned unchanged)"
+        assert result.error is None, f"Expected error=None (graceful failure, not exception), got {result.error}"
+        
+        result_df = result.data
 
-        # Output validation: DataFrame should be returned unchanged
+        # Output validation: DataFrame should be returned unchanged (graceful failure)
         assert isinstance(result_df, pd.DataFrame)
         assert len(result_df) == 3
         
@@ -192,9 +213,16 @@ class TestAIRemoteCategorization:
         )
 
         # Execute (should not raise exception)
-        result_df = command.process(df)
+        result = command.process(df)
+        
+        # Assert CommandResult structure - batch failures are handled gracefully (return_code=0, data returned)
+        assert result.return_code == 0, f"Expected return_code=0 (graceful failure handling), got {result.return_code}"
+        assert result.data is not None, "Expected data to be not None (returned unchanged)"
+        assert result.error is None, f"Expected error=None (graceful failure, not exception), got {result.error}"
+        
+        result_df = result.data
 
-        # Output validation: DataFrame should be returned unchanged
+        # Output validation: DataFrame should be returned unchanged (graceful failure)
         assert isinstance(result_df, pd.DataFrame)
         assert len(result_df) == 3
         
@@ -226,7 +254,14 @@ class TestAIRemoteCategorization:
         )
 
         # Execute
-        result_df = command.process(df)
+        result = command.process(df)
+        
+        # Assert CommandResult structure
+        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
+        assert result.data is not None, "Expected data to be not None"
+        assert result.error is None, f"Expected error=None, got {result.error}"
+        
+        result_df = result.data
 
         # Output validation: should return empty DataFrame without calling API
         assert isinstance(result_df, pd.DataFrame)
@@ -260,7 +295,14 @@ class TestAIRemoteCategorization:
         )
 
         # Execute
-        result_df = command.process(df)
+        result = command.process(df)
+        
+        # Assert CommandResult structure
+        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
+        assert result.data is not None, "Expected data to be not None"
+        assert result.error is None, f"Expected error=None, got {result.error}"
+        
+        result_df = result.data
 
         # Output validation: all rows should be categorized
         assert isinstance(result_df, pd.DataFrame)
@@ -299,7 +341,14 @@ class TestAIRemoteCategorization:
         )
 
         # Execute
-        result_df = command.process(df)
+        result = command.process(df)
+        
+        # Assert CommandResult structure
+        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
+        assert result.data is not None, "Expected data to be not None"
+        assert result.error is None, f"Expected error=None, got {result.error}"
+        
+        result_df = result.data
 
         # Output validation: no categories should be populated
         assert isinstance(result_df, pd.DataFrame)
@@ -335,7 +384,14 @@ class TestAIRemoteCategorization:
         )
 
         # Execute (should handle missing context gracefully)
-        result_df = command.process(df)
+        result = command.process(df)
+        
+        # Assert CommandResult structure
+        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
+        assert result.data is not None, "Expected data to be not None"
+        assert result.error is None, f"Expected error=None, got {result.error}"
+        
+        result_df = result.data
 
         # Output validation: should still return DataFrame with API results
         assert isinstance(result_df, pd.DataFrame)
@@ -376,7 +432,14 @@ class TestAIRemoteCategorization:
         )
 
         # Execute
-        result_df = command.process(df)
+        result = command.process(df)
+        
+        # Assert CommandResult structure
+        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
+        assert result.data is not None, "Expected data to be not None"
+        assert result.error is None, f"Expected error=None, got {result.error}"
+        
+        result_df = result.data
 
         # Output validation: should return DataFrame unchanged
         assert isinstance(result_df, pd.DataFrame)
@@ -417,7 +480,14 @@ class TestAIRemoteCategorization:
         )
 
         # Execute
-        result_df = command.process(df)
+        result = command.process(df)
+        
+        # Assert CommandResult structure
+        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
+        assert result.data is not None, "Expected data to be not None"
+        assert result.error is None, f"Expected error=None, got {result.error}"
+        
+        result_df = result.data
 
         # Validate that API was called
         assert mock_post.called
