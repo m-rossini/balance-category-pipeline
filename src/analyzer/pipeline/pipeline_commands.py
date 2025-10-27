@@ -252,20 +252,17 @@ class AIRemoteCategorizationCommand(PipelineCommand):
 
     def _build_transactions(self, batch_df: pd.DataFrame) -> List[Dict]:
         """Convert DataFrame batch to transaction list."""
-        try:
-            # Select and rename columns for API payload
-            selected_df = batch_df[['TransactionDescription', 'TransactionValue', 'TransactionDate', 'TransactionType']].copy()
-            selected_df.columns = ['description', 'amount', 'date', 'type']
-            
-            # Add id column based on index
-            selected_df['id'] = selected_df.index.astype(str)
-            
-            # Convert to list of dicts with proper field order
-            transactions = selected_df[['id', 'description', 'amount', 'date', 'type']].to_dict(orient='records')
-            logging.debug(f"[AIRemoteCategorizationCommand] Built {len(transactions)} transactions from batch of {len(batch_df)} rows")
-            return transactions
-        except Exception as e:
-            raise ValueError(f"Failed to build transactions: {e}") from e
+        # Select and rename columns for API payload
+        selected_df = batch_df[['TransactionDescription', 'TransactionValue', 'TransactionDate', 'TransactionType']].copy()
+        selected_df.columns = ['description', 'amount', 'date', 'type']
+        
+        # Add id column based on index
+        selected_df['id'] = selected_df.index.astype(str)
+        
+        # Convert to list of dicts with proper field order
+        transactions = selected_df[['id', 'description', 'amount', 'date', 'type']].to_dict(orient='records')
+        logging.debug(f"[AIRemoteCategorizationCommand] Built {len(transactions)} transactions from batch of {len(batch_df)} rows")
+        return transactions
 
     def _call_api(self, payload: Dict, batch_start: int, batch_end: int) -> Optional[Dict]:
         """Call remote API with payload and return response data."""

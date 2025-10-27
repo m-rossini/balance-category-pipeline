@@ -223,8 +223,11 @@ class TestDataPipelineIntegration:
         append_command = AppendFilesCommand(input_dir=self.test_extratos_dir, file_glob='*.csv')
         result = append_command.process()
 
-        # Extract data from CommandResult
-        assert result.return_code == 0
+        # Assert CommandResult structure
+        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
+        assert result.data is not None, "Expected data to be not None"
+        assert result.error is None, f"Expected error=None, got {result.error}"
+        
         result_df = result.data
         
         # Validate results
@@ -239,16 +242,23 @@ class TestDataPipelineIntegration:
         """Test MergeFilesCommand error when df is None and input_file is set."""
         merge_command = MergeFilesCommand(input_file='dummy.csv')
         result = merge_command.process(df=None)
-        # Check error code
-        assert result.return_code == -1
-        assert result.data is None
+        
+        # Assert CommandResult structure for error case
+        assert result.return_code == -1, f"Expected return_code=-1, got {result.return_code}"
+        assert result.data is None, "Expected data=None on error"
+        assert result.error is not None, f"Expected error dict, got {result.error}"
 
     def test_clean_data_command_default_clean(self):
         """Test CleanDataCommand uses default_clean when no functions provided."""
         df = pd.DataFrame({'col1': [1, 2], 'col2': ['a', 'b']})
         clean_command = CleanDataCommand(functions=None)
         result = clean_command.process(df)
-        assert result.return_code == 0
+        
+        # Assert CommandResult structure
+        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
+        assert result.data is not None, "Expected data to be not None"
+        assert result.error is None, f"Expected error=None, got {result.error}"
+        
         assert result.data.equals(df)  # default_clean just returns df
 
     def test_append_files_command_input_files_branch(self):
@@ -264,8 +274,11 @@ class TestDataPipelineIntegration:
         append_command = AppendFilesCommand(input_files=file_paths)
         result = append_command.process()
 
-        # Extract data from CommandResult
-        assert result.return_code == 0
+        # Assert CommandResult structure
+        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
+        assert result.data is not None, "Expected data to be not None"
+        assert result.error is None, f"Expected error=None, got {result.error}"
+        
         result_df = result.data
         
         assert isinstance(result_df, pd.DataFrame)
@@ -276,9 +289,10 @@ class TestDataPipelineIntegration:
         append_command = AppendFilesCommand(input_dir='/nonexistent', file_glob='*.csv')
         result = append_command.process()
         
-        # Check error code
-        assert result.return_code == -1
-        assert result.data is None
+        # Assert CommandResult structure for error case
+        assert result.return_code == -1, f"Expected return_code=-1, got {result.return_code}"
+        assert result.data is None, "Expected data=None on error"
+        assert result.error is not None, f"Expected error dict, got {result.error}"
 
     def test_append_files_command_read_error(self):
         """Test AppendFilesCommand when file read fails."""

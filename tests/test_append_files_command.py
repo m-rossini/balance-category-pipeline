@@ -45,8 +45,11 @@ def test_append_files_command_with_realistic_data():
         command = AppendFilesCommand(input_dir=temp_path)
         result = command.process()
 
-        # Extract data from CommandResult
-        assert result.return_code == 0
+        # Assert CommandResult structure
+        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
+        assert result.data is not None, "Expected data to be not None"
+        assert result.error is None, f"Expected error=None, got {result.error}"
+        
         df = result.data
 
         # Assert the data is loaded in descending date order across all files
