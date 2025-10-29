@@ -2,7 +2,7 @@
 import pytest
 import pandas as pd
 from analyzer.pipeline.pipeline_commands import (
-    DataPipeline, AppendFilesCommand, CleanDataCommand, 
+    DataPipeline,
     QualityAnalysisCommand, PipelineCommand, CommandResult
 )
 from analyzer.pipeline.quality import SimpleQualityCalculator
