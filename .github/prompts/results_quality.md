@@ -14,7 +14,7 @@ The calculation will be an average of each row confidence value. Confidence valu
 For each row, if any of category, subcategory or confidence is missing the value for that row is zero.
 If confidence is zero, regardless of anything else the confidence is zero.
 
-Numbers below 0.70 have more weight in bringing the index down, anything between 0.71 and 0.9 is second weight and over 0.9 has a lesser weight. This is to highlight the need for a higher confidence overall. If there is any other strategy to it, let me know and ask for clairifications.
+Numbers below 0.70 have more weight in bringing the index down, anything between 0.71 and 0.9 is second weight and over 0.9 has a lesser weight. This is to highlight the need for a higher confidence overall. If there is any other strategy to it, let me know and ask for clarifications.
 
 ## Implementations
 The calculator should be pluggable and defined in configuration. I can decide to change how to calculate it at any time.
