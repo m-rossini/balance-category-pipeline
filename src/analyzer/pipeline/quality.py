@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 import pandas as pd
 
-
 @dataclass
 class QualityMetrics:
     """Represents quality metrics for a pipeline execution."""
