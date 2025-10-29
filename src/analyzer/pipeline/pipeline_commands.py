@@ -325,11 +325,11 @@ class QualityAnalysisCommand(PipelineCommand):
         """Initialize with a QualityCalculator instance.
         
         Args:
-            calculator: QualityCalculator instance. If None, uses DefaultQualityCalculator.
+            calculator: QualityCalculator instance. If None, uses SimpleQualityCalculator.
         """
         if calculator is None:
-            from .quality import DefaultQualityCalculator
-            calculator = DefaultQualityCalculator()
+            from .quality import SimpleQualityCalculator
+            calculator = SimpleQualityCalculator()
         self.calculator = calculator
     
     def process(self, df: pd.DataFrame) -> CommandResult:
@@ -345,13 +345,14 @@ class QualityAnalysisCommand(PipelineCommand):
             - metadata_updates: dict with 'quality_index' and 'calculator_name'
         """
         try:
-            # Calculate quality index
-            quality_index = self.calculator.calculate(df)
+            # Calculate quality metrics
+            metrics = self.calculator.calculate(df)
             
-            # Build metadata updates
+            # Build metadata updates with overall_quality_index
             metadata_updates = {
-                'quality_index': quality_index,
-                'calculator_name': self.calculator.__class__.__name__
+                'quality_index': metrics.overall_quality_index,
+                'calculator_name': self.calculator.__class__.__name__,
+                'quality_metrics': metrics.to_dict()
             }
             
             return CommandResult(
@@ -361,7 +362,6 @@ class QualityAnalysisCommand(PipelineCommand):
                 metadata_updates=metadata_updates
             )
         except Exception as e:
-            logging.error(f"[QualityAnalysisCommand] Error calculating quality: {str(e)}")
             return CommandResult(
                 return_code=-1,
                 data=None,

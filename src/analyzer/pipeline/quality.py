@@ -28,20 +28,20 @@ class QualityCalculator(ABC):
     """Abstract interface for pluggable quality calculation strategies."""
 
     @abstractmethod
-    def calculate(self, df: pd.DataFrame) -> float:
-        """Calculate quality index for DataFrame.
+    def calculate(self, df: pd.DataFrame) -> QualityMetrics:
+        """Calculate quality metrics for DataFrame.
         
         Args:
             df: DataFrame with CategoryAnnotation, SubCategoryAnnotation, Confidence columns
             
         Returns:
-            Quality index between 0.0 (no quality) and 1.0 (perfect quality)
+            QualityMetrics object with calculated metrics
         """
         pass
 
 
-class DefaultQualityCalculator(QualityCalculator):
-    """Default implementation of quality calculator with weighted confidence calculation.
+class SimpleQualityCalculator(QualityCalculator):
+    """Simple implementation of quality calculator with confidence-based calculation.
     
     Rules:
     - Row is invalid (0) if any of: category, subcategory, or confidence is missing
@@ -51,10 +51,15 @@ class DefaultQualityCalculator(QualityCalculator):
     - Confidence values > 0.90 have lesser weight
     """
 
-    def calculate(self, df: pd.DataFrame) -> float:
+    def calculate(self, df: pd.DataFrame) -> QualityMetrics:
         """Calculate weighted quality index based on row confidence scores."""
         if df.empty:
-            return 0.0
+            return QualityMetrics(
+                completeness=0.0,
+                confidence=0.0,
+                consistency=0.0,
+                overall_quality_index=0.0
+            )
 
         # Calculate row-level scores
         row_scores = []
@@ -63,10 +68,22 @@ class DefaultQualityCalculator(QualityCalculator):
             row_scores.append(row_score)
 
         if not row_scores:
-            return 0.0
+            return QualityMetrics(
+                completeness=0.0,
+                confidence=0.0,
+                consistency=0.0,
+                overall_quality_index=0.0
+            )
 
         # Apply weighted average calculation
-        return self._apply_weighting(row_scores)
+        quality_index = self._apply_weighting(row_scores)
+        
+        return QualityMetrics(
+            completeness=0.0,  # To be calculated in future
+            confidence=quality_index,
+            consistency=0.0,  # To be calculated in future
+            overall_quality_index=quality_index
+        )
 
     def _calculate_row_score(self, row: pd.Series) -> float:
         """Calculate score for a single row. Returns 0 if any field missing or confidence is 0."""
