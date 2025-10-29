@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 import pandas as pd
-import numpy as np
 
 
 @dataclass
