@@ -3,16 +3,16 @@ import pytest
 import tempfile
 from pathlib import Path
 import pandas as pd
-from analyzer.pipeline.pipeline_commands import DataPipeline, PipelineCommand
+from analyzer.pipeline.pipeline_commands import DataPipeline, PipelineCommand, CommandResult
 from analyzer.pipeline.metadata import MetadataCollector, MetadataRepository
 
 
 class SimpleCommand(PipelineCommand):
     """Simple test command that creates a DataFrame."""
-    def process(self, df: pd.DataFrame) -> pd.DataFrame:
+    def process(self, df: pd.DataFrame) -> CommandResult:
         if df is None or df.empty:
-            return pd.DataFrame({"id": [1, 2, 3], "value": [10, 20, 30]})
-        return df
+            df = pd.DataFrame({"id": [1, 2, 3], "value": [10, 20, 30]})
+        return CommandResult(return_code=0, data=df)
 
 
 def test_data_pipeline_accepts_metadata_collector():

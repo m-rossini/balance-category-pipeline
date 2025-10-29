@@ -1,15 +1,15 @@
 """Test DataPipeline always has a collector."""
 import pytest
 import pandas as pd
-from analyzer.pipeline.pipeline_commands import DataPipeline, PipelineCommand
+from analyzer.pipeline.pipeline_commands import DataPipeline, PipelineCommand, CommandResult
 
 
 class SimpleCommand(PipelineCommand):
     """Simple test command."""
-    def process(self, df: pd.DataFrame) -> pd.DataFrame:
+    def process(self, df: pd.DataFrame) -> CommandResult:
         if df is None or df.empty:
-            return pd.DataFrame({"id": [1, 2, 3]})
-        return df
+            df = pd.DataFrame({"id": [1, 2, 3]})
+        return CommandResult(return_code=0, data=df)
 
 
 def test_data_pipeline_creates_collector_if_not_provided():
