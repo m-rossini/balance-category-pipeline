@@ -317,6 +317,59 @@ class AIRemoteCategorizationCommand(PipelineCommand):
         return result_df
 
 
+@register_command
+class QualityAnalysisCommand(PipelineCommand):
+    """Command to analyze and calculate quality metrics for categorized data."""
+    
+    def __init__(self, calculator=None):
+        """Initialize with a QualityCalculator instance.
+        
+        Args:
+            calculator: QualityCalculator instance. If None, uses DefaultQualityCalculator.
+        """
+        if calculator is None:
+            from .quality import DefaultQualityCalculator
+            calculator = DefaultQualityCalculator()
+        self.calculator = calculator
+    
+    def process(self, df: pd.DataFrame) -> CommandResult:
+        """Process DataFrame and return quality metrics.
+        
+        Args:
+            df: DataFrame with categorization results (CategoryAnnotation, SubCategoryAnnotation, Confidence)
+        
+        Returns:
+            CommandResult with:
+            - return_code: 0 (success)
+            - data: unchanged DataFrame
+            - metadata_updates: dict with 'quality_index' and 'calculator_name'
+        """
+        try:
+            # Calculate quality index
+            quality_index = self.calculator.calculate(df)
+            
+            # Build metadata updates
+            metadata_updates = {
+                'quality_index': quality_index,
+                'calculator_name': self.calculator.__class__.__name__
+            }
+            
+            return CommandResult(
+                return_code=0,
+                data=df,
+                error=None,
+                metadata_updates=metadata_updates
+            )
+        except Exception as e:
+            logging.error(f"[QualityAnalysisCommand] Error calculating quality: {str(e)}")
+            return CommandResult(
+                return_code=-1,
+                data=None,
+                error={"message": str(e)},
+                metadata_updates=None
+            )
+
+
 class DataPipeline:
     def __init__(self, commands, collector=None):
         self.commands = commands
