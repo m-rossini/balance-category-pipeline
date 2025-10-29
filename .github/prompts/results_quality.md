@@ -5,7 +5,7 @@ This feature objective is to measure the quality of categorization made in previ
 The data categorized. It will receive the whole data frame and will use the columns Category, Subcategory and confidence to calculate a quality index.
 
 ## Outputs
-The outputs will be in the form of CommandResult class wehre the data frame is the same from the input
+The outputs will be in the form of CommandResult class where the data frame is the same from the input
 It will create the score into the metadata parameter.
 
 ## Calculation
