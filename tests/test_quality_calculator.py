@@ -1,7 +1,7 @@
 """TDD: Tests for QualityCalculator interface and implementations."""
 import pytest
 import pandas as pd
-from analyzer.pipeline.quality import QualityCalculator, SimpleQualityCalculator, QualityMetrics
+from analyzer.pipeline.quality import SimpleQualityCalculator, QualityMetrics
 
 
 def test_default_quality_calculator_with_all_valid_data():
