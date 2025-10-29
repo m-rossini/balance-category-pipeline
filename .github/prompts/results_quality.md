@@ -22,4 +22,4 @@ The calculator should be pluggable and defined in configuration. I can decide to
 ## Interactions
 The metadata will be updated with the quality index via metadata paramter in the command result.
 The metadata will be updated with the name of the calculator via metadata parameter.
-The Datapipeline class should read metadata info after each step, update the final metadata with the ones from the command result
+The DataPipeline class should read metadata info after each step, update the final metadata with the ones from the command result
