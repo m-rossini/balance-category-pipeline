@@ -1,5 +1,4 @@
 """TDD: Tests for QualityMetrics dataclass and quality calculations."""
-import pytest
 from analyzer.pipeline.quality import QualityMetrics
 
 
