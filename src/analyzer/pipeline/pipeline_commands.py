@@ -317,20 +317,71 @@ class AIRemoteCategorizationCommand(PipelineCommand):
         return result_df
 
 
+@register_command
+class QualityAnalysisCommand(PipelineCommand):
+    """Command to analyze and calculate quality metrics for categorized data."""
+    
+    def __init__(self, calculator=None):
+        """Initialize with a QualityCalculator instance.
+        
+        Args:
+            calculator: QualityCalculator instance. If None, uses SimpleQualityCalculator.
+        """
+        if calculator is None:
+            from .quality import SimpleQualityCalculator
+            calculator = SimpleQualityCalculator()
+        self.calculator = calculator
+    
+    def process(self, df: pd.DataFrame) -> CommandResult:
+        """Process DataFrame and return quality metrics.
+        
+        Args:
+            df: DataFrame with categorization results (CategoryAnnotation, SubCategoryAnnotation, Confidence)
+        
+        Returns:
+            CommandResult with:
+            - return_code: 0 (success)
+            - data: unchanged DataFrame
+            - metadata_updates: dict with 'quality_index' and 'calculator_name'
+        """
+        try:
+            # Calculate quality metrics
+            metrics = self.calculator.calculate(df)
+            
+            # Build metadata updates with overall_quality_index
+            metadata_updates = {
+                'quality_index': metrics.overall_quality_index,
+                'calculator_name': self.calculator.__class__.__name__,
+                'quality_metrics': metrics.to_dict()
+            }
+            
+            return CommandResult(
+                return_code=0,
+                data=df,
+                error=None,
+                metadata_updates=metadata_updates
+            )
+        except Exception as e:
+            return CommandResult(
+                return_code=-1,
+                data=None,
+                error={"message": str(e)},
+                metadata_updates=None
+            )
+
+
 class DataPipeline:
     def __init__(self, commands, collector=None):
         self.commands = commands
-        # Always ensure we have a collector
         if collector is None:
             from analyzer.pipeline.metadata import MetadataCollector
-            self.collector = MetadataCollector(pipeline_name="DataPipeline")
-        else:
-            self.collector = collector
+            collector = MetadataCollector(pipeline_name="DataPipeline")
+        self.collector = collector
         
     def run(self, initial_df=None, repository=None):
         df = initial_df
         
-        # Always start pipeline collection (collector is always present)
+        # Start pipeline collection
         self.collector.start_pipeline()
         
         for command in self.commands:
@@ -340,23 +391,18 @@ class DataPipeline:
             
             result = command.process(df)
             
-            # Handle CommandResult
-            if isinstance(result, CommandResult):
-                # Check return code - halt on negative codes
-                if result.return_code < 0:
-                    logging.error(f"[DataPipeline] Command {command.__class__.__name__} failed with return_code={result.return_code}: {result.error}")
-                    # Return empty DataFrame to indicate failure
-                    return pd.DataFrame()
-                df = result.data
-            else:
-                # Fallback for legacy DataFrame returns
-                df = result
+            # Check return code - halt on negative codes
+            if result.return_code < 0:
+                logging.error(f"[DataPipeline] Command {command.__class__.__name__} failed with return_code={result.return_code}: {result.error}")
+                # Return empty DataFrame to indicate failure
+                return pd.DataFrame()
+            df = result.data
             
             output_rows = len(df) if isinstance(df, pd.DataFrame) else 0
             elapsed = time.time() - start
             logging.debug(f"[DataPipeline] Step {command.__class__.__name__} completed in {elapsed:.4f} seconds")
             
-            # Track step metadata (collector always present)
+            # Track step metadata
             from analyzer.pipeline.metadata import StepMetadata
             step_metadata = StepMetadata(
                 name=command.__class__.__name__,
@@ -366,8 +412,13 @@ class DataPipeline:
                 parameters={}
             )
             self.collector.track_step(step_metadata)
+            
+            # Merge all metadata_updates from command result into pipeline metadata
+            if result.metadata_updates:
+                for key, value in result.metadata_updates.items():
+                    setattr(self.collector.pipeline_metadata, key, value)
         
-        # Always end collection (collector is always present)
+        # End collection
         self.collector.end_pipeline()
         
         # Save metadata if repository provided

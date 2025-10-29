@@ -20,8 +20,9 @@ applyTo: '**'
     * Imports ALWAYS goes to the top of the file
     * Start with test that fails and move from ther in TDD fashion
     * use extreme programming paradigm when coding and consider myself as your senior peer/counterpart
-    * Ask me to review and approve waht you created as your extreme programmer peer
+    * Ask me to review and approve what you created as your extreme programmer peer
     * In between each step of the implementaiton plan when using TDD, ask me if I want to git commit
+    * For commits there is no need for statistics mentioning how many tests were ran or passed
     * ALWAYS go step by step, do not create multiple files at same time, do not create multiple classes at same time
     * NEVER Create a whole solution end to end. Give small baby steps towards the end goal.
 
