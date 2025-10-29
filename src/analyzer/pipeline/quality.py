@@ -1,7 +1,7 @@
 """Quality metrics calculation and tracking."""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 import pandas as pd
 
 @dataclass
