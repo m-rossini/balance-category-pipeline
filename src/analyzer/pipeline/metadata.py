@@ -112,6 +112,7 @@ class PipelineMetadata:
             "input_rows": self.input_rows,
             "output_rows": self.output_rows,
             "quality_index": self.quality_index,
+            "context_files": self.context_files,
             "steps": [step.to_dict() for step in self.steps]
         }
 
