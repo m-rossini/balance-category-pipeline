@@ -170,7 +170,15 @@ class SaveFileCommand(PipelineCommand):
             self.output_path.parent.mkdir(parents=True, exist_ok=True)
             df.to_csv(str(self.output_path), index=False)
             logging.info(f"[SaveFileCommand] Saved to {self.output_path} ({len(df)}) rows")
-            return CommandResult(return_code=0, data=df)
+            
+            # Capture absolute file path in metadata_updates for step parameters
+            absolute_path = str(self.output_path.resolve())
+            
+            return CommandResult(
+                return_code=0, 
+                data=df,
+                metadata_updates={"output_file_path": absolute_path}
+            )
         except Exception as e:
             return CommandResult(return_code=-1, data=None, error={"message": str(e)})
 
@@ -411,6 +419,14 @@ class DataPipeline:
             step_end_time = datetime.now(timezone.utc)
             logging.debug(f"[DataPipeline] Step {command.__class__.__name__} completed in {elapsed:.4f} seconds")
             
+            # Prepare step parameters - include any command-specific parameters from metadata_updates
+            step_parameters = {}
+            if result.metadata_updates:
+                # Extract command-specific parameters (like output_file_path) for step metadata
+                for key in ['output_file_path', 'file_path']:
+                    if key in result.metadata_updates:
+                        step_parameters[key] = result.metadata_updates[key]
+            
             # Track step metadata
             from analyzer.pipeline.metadata import StepMetadata
             step_metadata = StepMetadata(
@@ -420,7 +436,7 @@ class DataPipeline:
                 duration=elapsed,
                 start_time=step_start_time,
                 end_time=step_end_time,
-                parameters={}
+                parameters=step_parameters
             )
             self.collector.track_step(step_metadata)
             
