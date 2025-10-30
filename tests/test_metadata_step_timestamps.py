@@ -10,7 +10,7 @@ from analyzer.pipeline.metadata import MetadataCollector
 class SimpleCommand(PipelineCommand):
     """Simple test command."""
     
-    def process(self, df: pd.DataFrame) -> CommandResult:
+    def process(self, df: pd.DataFrame, context=None) -> CommandResult:
         """Return input DataFrame unchanged."""
         return CommandResult(return_code=0, data=df)
 

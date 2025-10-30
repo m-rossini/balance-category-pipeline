@@ -9,7 +9,7 @@ from analyzer.pipeline.metadata import MetadataCollector, MetadataRepository
 
 class SimpleCommand(PipelineCommand):
     """Simple test command that creates a DataFrame."""
-    def process(self, df: pd.DataFrame) -> CommandResult:
+    def process(self, df: pd.DataFrame, context=None) -> CommandResult:
         if df is None or df.empty:
             df = pd.DataFrame({"id": [1, 2, 3], "value": [10, 20, 30]})
         return CommandResult(return_code=0, data=df)

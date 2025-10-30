@@ -6,7 +6,7 @@ from analyzer.pipeline.pipeline_commands import DataPipeline, PipelineCommand, C
 
 class SimpleCommand(PipelineCommand):
     """Simple test command."""
-    def process(self, df: pd.DataFrame) -> CommandResult:
+    def process(self, df: pd.DataFrame, context=None) -> CommandResult:
         if df is None or df.empty:
             df = pd.DataFrame({"id": [1, 2, 3]})
         return CommandResult(return_code=0, data=df)

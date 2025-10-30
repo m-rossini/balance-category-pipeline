@@ -66,7 +66,8 @@ class PipelineMetadata:
         pipeline_name: str,
         start_time: datetime,
         end_time: datetime,
-        quality_index: Optional[Any] = None
+        quality_index: Optional[Any] = None,
+        context_files: Optional[Dict[str, str]] = None
     ):
         """Initialize pipeline metadata.
         
@@ -75,6 +76,7 @@ class PipelineMetadata:
             start_time: When the pipeline started executing
             end_time: When the pipeline finished executing
             quality_index: Placeholder for quality metrics (optional)
+            context_files: Context files used by the pipeline (optional)
         """
         self.pipeline_name = pipeline_name
         self.start_time = start_time
@@ -82,6 +84,7 @@ class PipelineMetadata:
         self.run_id = str(uuid.uuid4())
         self.steps: List[StepMetadata] = []
         self.quality_index = quality_index
+        self.context_files = context_files
         self.input_rows: Optional[int] = None
         self.output_rows: Optional[int] = None
     
