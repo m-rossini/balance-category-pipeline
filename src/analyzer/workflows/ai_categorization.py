@@ -1,7 +1,8 @@
 from analyzer.pipeline.pipeline_commands import (
     DataPipeline, AppendFilesCommand, CleanDataCommand,
-    AIRemoteCategorizationCommand, SaveFileCommand
+    AIRemoteCategorizationCommand, QualityAnalysisCommand, SaveFileCommand
 )
+from analyzer.pipeline.quality import SimpleQualityCalculator
 from analyzer.workflows.bank_extract_clean import bank_extract_clean
 import os
 
@@ -45,6 +46,7 @@ def get_pipeline():
             data={"transactions": []},  # Will be populated with transaction data
             context=context
         ),
+        QualityAnalysisCommand(calculator=SimpleQualityCalculator()),
         SaveFileCommand(
             output_path=output_path,
             save_empty=False,

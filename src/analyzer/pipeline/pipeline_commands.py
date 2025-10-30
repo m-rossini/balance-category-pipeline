@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 import logging
 import time
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 import os
 import json
@@ -386,6 +387,7 @@ class DataPipeline:
         
         for command in self.commands:
             logging.debug(f"[DataPipeline] Running step: {command.__class__.__name__}")
+            step_start_time = datetime.now(timezone.utc)
             start = time.time()
             input_rows = len(df) if isinstance(df, pd.DataFrame) else 0
             
@@ -400,6 +402,7 @@ class DataPipeline:
             
             output_rows = len(df) if isinstance(df, pd.DataFrame) else 0
             elapsed = time.time() - start
+            step_end_time = datetime.now(timezone.utc)
             logging.debug(f"[DataPipeline] Step {command.__class__.__name__} completed in {elapsed:.4f} seconds")
             
             # Track step metadata
@@ -409,6 +412,8 @@ class DataPipeline:
                 input_rows=input_rows,
                 output_rows=output_rows,
                 duration=elapsed,
+                start_time=step_start_time,
+                end_time=step_end_time,
                 parameters={}
             )
             self.collector.track_step(step_metadata)
