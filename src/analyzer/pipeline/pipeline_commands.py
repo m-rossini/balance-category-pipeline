@@ -154,7 +154,14 @@ class AppendFilesCommand(PipelineCommand):
 
         combined = pd.concat(dfs, ignore_index=True)
         logging.info(f"[AppendFilesCommand] Appended {len(dfs)} files, resulting rows: {len(combined)}")
-        return CommandResult(return_code=0, data=combined)
+        
+        # Capture input_dir and file_glob in metadata_updates for step parameters
+        metadata_updates = {}
+        if self.input_dir:
+            metadata_updates["input_dir"] = str(Path(self.input_dir).resolve())
+        metadata_updates["file_glob"] = self.file_glob
+        
+        return CommandResult(return_code=0, data=combined, metadata_updates=metadata_updates)
 
 @register_command
 class SaveFileCommand(PipelineCommand):
