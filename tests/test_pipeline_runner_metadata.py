@@ -24,7 +24,7 @@ def test_pipeline_runner_accepts_metadata_dir_flag(monkeypatch, caplog):
         from analyzer.pipeline.pipeline_commands import DataPipeline, PipelineCommand, CommandResult
         
         class FakeCommand(PipelineCommand):
-            def process(self, df):
+            def process(self, df, context=None):
                 if df is None or df.empty:
                     df = pd.DataFrame([{'id': 1}])
                 return CommandResult(return_code=0, data=df)
@@ -54,7 +54,7 @@ def test_pipeline_runner_always_saves_metadata(monkeypatch):
         from analyzer.pipeline.pipeline_commands import DataPipeline, PipelineCommand, CommandResult
         
         class FakeCommand(PipelineCommand):
-            def process(self, df):
+            def process(self, df, context=None):
                 if df is None or df.empty:
                     df = pd.DataFrame([{'id': i} for i in range(100)])
                 return CommandResult(return_code=0, data=df)

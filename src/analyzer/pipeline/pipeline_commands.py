@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 import logging
 import time
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 import os
 import json
@@ -22,7 +23,7 @@ def register_command(cls):
 
 class PipelineCommand(ABC):
     @abstractmethod
-    def process(self, df: pd.DataFrame) -> CommandResult:
+    def process(self, df: pd.DataFrame, context: Optional[Dict[str, Any]] = None) -> CommandResult:
         pass
 
 @register_command
@@ -38,7 +39,7 @@ class MergeFilesCommand(PipelineCommand):
         self.file_glob = file_glob
         self.context = context or {}
 
-    def process(self, df=None) -> CommandResult:
+    def process(self, df=None, context: Optional[Dict[str, Any]] = None) -> CommandResult:
         if df is None or not self.input_file:
             return CommandResult(return_code=-1, data=None, error={"message": "Missing input DataFrame or input file"})
 
@@ -89,7 +90,7 @@ class CleanDataCommand(PipelineCommand):
         self.context = context or {}
         self.functions = functions or [CleanDataCommand.default_clean]
     
-    def process(self, df: pd.DataFrame) -> CommandResult:
+    def process(self, df: pd.DataFrame, context: Optional[Dict[str, Any]] = None) -> CommandResult:
         logging.debug(f"[CleanDataCommand] Starting cleaning. Input shape: {df.shape}")
         if df.empty:
             logging.warning("No data to clean.")
@@ -121,7 +122,7 @@ class AppendFilesCommand(PipelineCommand):
         self.context = context or {}
         logging.debug(f"[AppendFilesCommand] Initialized with input_dir={self.input_dir}, file_glob={self.file_glob}, input_files={self.input_files}")  
 
-    def process(self, df: Optional[pd.DataFrame] = None) -> CommandResult:
+    def process(self, df: Optional[pd.DataFrame] = None, context: Optional[Dict[str, Any]] = None) -> CommandResult:
         logging.debug(f"[AppendFilesCommand] Starting append. input_dir={self.input_dir} file_glob={self.file_glob}")
 
         files = []
@@ -162,7 +163,7 @@ class SaveFileCommand(PipelineCommand):
         self.save_empty = save_empty
         self.context = context or {}
     
-    def process(self, df: pd.DataFrame) -> CommandResult:
+    def process(self, df: pd.DataFrame, context: Optional[Dict[str, Any]] = None) -> CommandResult:
         try:
             if df.empty and not self.save_empty:
                 return CommandResult(return_code=0, data=df)
@@ -186,7 +187,7 @@ class AIRemoteCategorizationCommand(PipelineCommand):
         self.max_errors = max_errors
         self.impl = impl
 
-    def process(self, df: pd.DataFrame) -> CommandResult:
+    def process(self, df: pd.DataFrame, context: Optional[Dict[str, Any]] = None) -> CommandResult:
         """Process DataFrame by calling remote categorization API in batches."""
         logging.info(f"[AIRemoteCategorizationCommand] Processing {len(df)} records in batches of {self.batch_size}")        
         if len(df) == 0:
@@ -332,11 +333,12 @@ class QualityAnalysisCommand(PipelineCommand):
             calculator = SimpleQualityCalculator()
         self.calculator = calculator
     
-    def process(self, df: pd.DataFrame) -> CommandResult:
+    def process(self, df: pd.DataFrame, context: Optional[Dict[str, Any]] = None) -> CommandResult:
         """Process DataFrame and return quality metrics.
         
         Args:
             df: DataFrame with categorization results (CategoryAnnotation, SubCategoryAnnotation, Confidence)
+            context: Optional context dict (not used by quality analysis)
         
         Returns:
             CommandResult with:
@@ -371,12 +373,13 @@ class QualityAnalysisCommand(PipelineCommand):
 
 
 class DataPipeline:
-    def __init__(self, commands, collector=None):
+    def __init__(self, commands, collector=None, context=None):
         self.commands = commands
         if collector is None:
             from analyzer.pipeline.metadata import MetadataCollector
             collector = MetadataCollector(pipeline_name="DataPipeline")
         self.collector = collector
+        self.context = context or {}
         
     def run(self, initial_df=None, repository=None):
         df = initial_df
@@ -386,10 +389,11 @@ class DataPipeline:
         
         for command in self.commands:
             logging.debug(f"[DataPipeline] Running step: {command.__class__.__name__}")
+            step_start_time = datetime.now(timezone.utc)
             start = time.time()
             input_rows = len(df) if isinstance(df, pd.DataFrame) else 0
             
-            result = command.process(df)
+            result = command.process(df, context=self.context)
             
             # Check return code - halt on negative codes
             if result.return_code < 0:
@@ -398,8 +402,13 @@ class DataPipeline:
                 return pd.DataFrame()
             df = result.data
             
+            # Update context if command returns context_updates
+            if result.context_updates:
+                self.context.update(result.context_updates)
+            
             output_rows = len(df) if isinstance(df, pd.DataFrame) else 0
             elapsed = time.time() - start
+            step_end_time = datetime.now(timezone.utc)
             logging.debug(f"[DataPipeline] Step {command.__class__.__name__} completed in {elapsed:.4f} seconds")
             
             # Track step metadata
@@ -409,6 +418,8 @@ class DataPipeline:
                 input_rows=input_rows,
                 output_rows=output_rows,
                 duration=elapsed,
+                start_time=step_start_time,
+                end_time=step_end_time,
                 parameters={}
             )
             self.collector.track_step(step_metadata)
@@ -420,6 +431,10 @@ class DataPipeline:
         
         # End collection
         self.collector.end_pipeline()
+        
+        # Capture context_files at pipeline end
+        if self.context:
+            self.collector.pipeline_metadata.context_files = self.context
         
         # Save metadata if repository provided
         if repository:

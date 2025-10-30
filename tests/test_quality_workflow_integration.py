@@ -11,7 +11,7 @@ from analyzer.pipeline.metadata import MetadataCollector
 
 class MockLoadCommand(PipelineCommand):
     """Mock command that loads categorized data."""
-    def process(self, df: pd.DataFrame) -> CommandResult:
+    def process(self, df: pd.DataFrame, context=None) -> CommandResult:
         # Create mock categorized data
         data = pd.DataFrame({
             'CategoryAnnotation': ['Food', 'Transport', 'Utilities', 'Entertainment'],
@@ -54,7 +54,7 @@ def test_quality_analysis_with_missing_data():
     """Test quality analysis with rows missing category information."""
     
     class MixedDataCommand(PipelineCommand):
-        def process(self, df: pd.DataFrame) -> CommandResult:
+        def process(self, df: pd.DataFrame, context=None) -> CommandResult:
             data = pd.DataFrame({
                 'CategoryAnnotation': ['Food', None, 'Utilities'],
                 'SubCategoryAnnotation': ['Coffee', 'Bus', None],
@@ -89,7 +89,7 @@ def test_quality_analysis_captures_all_metrics():
     """Test that full quality metrics are captured in metadata."""
     
     class SimpleDataCommand(PipelineCommand):
-        def process(self, df: pd.DataFrame) -> CommandResult:
+        def process(self, df: pd.DataFrame, context=None) -> CommandResult:
             data = pd.DataFrame({
                 'CategoryAnnotation': ['Food', 'Transport'],
                 'SubCategoryAnnotation': ['Coffee', 'Bus'],
@@ -125,7 +125,7 @@ def test_quality_analysis_with_low_confidence_data():
     """Test quality analysis with consistently low confidence scores."""
     
     class LowConfidenceCommand(PipelineCommand):
-        def process(self, df: pd.DataFrame) -> CommandResult:
+        def process(self, df: pd.DataFrame, context=None) -> CommandResult:
             data = pd.DataFrame({
                 'CategoryAnnotation': ['Food', 'Transport', 'Utilities'],
                 'SubCategoryAnnotation': ['Coffee', 'Bus', 'Gas'],

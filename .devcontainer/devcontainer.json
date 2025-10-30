@@ -1,7 +1,10 @@
 {
     "name": "Python Development",
     "image": "python:3.11-slim",
-    "runArgs": ["--security-opt", "label=disable"],
+    "runArgs": [
+        "--security-opt", "label=disable",
+        "--mount=type=bind,source=${SSH_AUTH_SOCK},target=/ssh-agent"
+    ],
     "customizations": {
         "vscode": {
             "settings": {
@@ -13,6 +16,9 @@
     "mounts": ["source=${localWorkspaceFolder},target=/workspace,type=bind,Z"],
     "postCreateCommand": "pip install --user -r /workspace/requirements.txt",
     "remoteUser": "vscode",
-    "workspaceFolder": "/workspace"
+    "workspaceFolder": "/workspace",
+    "remoteEnv": {
+        "SSH_AUTH_SOCK": "/ssh-agent"
+    }
 }
 

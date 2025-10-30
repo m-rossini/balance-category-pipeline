@@ -1,7 +1,8 @@
 from analyzer.pipeline.pipeline_commands import (
     DataPipeline, AppendFilesCommand, CleanDataCommand,
-    AIRemoteCategorizationCommand, SaveFileCommand
+    AIRemoteCategorizationCommand, QualityAnalysisCommand, SaveFileCommand
 )
+from analyzer.pipeline.quality import SimpleQualityCalculator
 from analyzer.workflows.bank_extract_clean import bank_extract_clean
 import os
 
@@ -23,31 +24,30 @@ def get_pipeline():
     # categorization step before saving the annotated output.
     from analyzer.pipeline.pipeline_commands import MergeFilesCommand
 
-    return DataPipeline([
-        AppendFilesCommand(
-            input_dir='data/extratos/demo/',
-            file_glob='*.csv',
-            context=context
-        ),
-        CleanDataCommand(
-            functions=[bank_extract_clean],
-            context=context
-        ),
-        MergeFilesCommand(
-            input_file='data/training/factoids.csv',
-            on_columns=['TransactionNumber'],
-            context=context
-        ),
-        AIRemoteCategorizationCommand(
-            service_url=service_url,
-            method="POST",
-            headers={"Authorization": os.getenv('AI_SERVICE_API_KEY', '')},
-            data={"transactions": []},  # Will be populated with transaction data
-            context=context
-        ),
-        SaveFileCommand(
-            output_path=output_path,
-            save_empty=False,
-            context=context
-        )
-    ])
+    return DataPipeline(
+        [
+            AppendFilesCommand(
+                input_dir='data/extratos/demo/',
+                file_glob='*.csv'
+            ),
+            CleanDataCommand(
+                functions=[bank_extract_clean]
+            ),
+            MergeFilesCommand(
+                input_file='data/training/factoids.csv',
+                on_columns=['TransactionNumber']
+            ),
+            AIRemoteCategorizationCommand(
+                service_url=service_url,
+                method="POST",
+                headers={"Authorization": os.getenv('AI_SERVICE_API_KEY', '')},
+                data={"transactions": []}  # Will be populated with transaction data
+            ),
+            QualityAnalysisCommand(calculator=SimpleQualityCalculator()),
+            SaveFileCommand(
+                output_path=output_path,
+                save_empty=False
+            )
+        ],
+        context=context
+    )
