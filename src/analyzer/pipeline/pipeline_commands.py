@@ -419,14 +419,6 @@ class DataPipeline:
             step_end_time = datetime.now(timezone.utc)
             logging.debug(f"[DataPipeline] Step {command.__class__.__name__} completed in {elapsed:.4f} seconds")
             
-            # Prepare step parameters - include any command-specific parameters from metadata_updates
-            step_parameters = {}
-            if result.metadata_updates:
-                # Extract command-specific parameters (like output_file_path) for step metadata
-                for key in ['output_file_path', 'file_path']:
-                    if key in result.metadata_updates:
-                        step_parameters[key] = result.metadata_updates[key]
-            
             # Track step metadata
             from analyzer.pipeline.metadata import StepMetadata
             step_metadata = StepMetadata(
@@ -436,7 +428,7 @@ class DataPipeline:
                 duration=elapsed,
                 start_time=step_start_time,
                 end_time=step_end_time,
-                parameters=step_parameters
+                parameters=result.metadata_updates or {}
             )
             self.collector.track_step(step_metadata)
             
