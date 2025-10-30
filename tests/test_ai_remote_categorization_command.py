@@ -1,9 +1,5 @@
-import os
-import tempfile
-import json
 import pandas as pd
 from unittest.mock import patch, MagicMock
-import pytest
 
 from analyzer.pipeline.pipeline_commands import AIRemoteCategorizationCommand
 
@@ -13,43 +9,6 @@ class TestAIRemoteCategorization:
     
     These tests verify input -> output behavior without testing internal implementation.
     """
-
-    def setup_method(self):
-        """Set up test environment before each test."""
-        self.test_dir = tempfile.mkdtemp()
-        self.context_file = os.path.join(self.test_dir, 'categories.json')
-        self.typecode_file = os.path.join(self.test_dir, 'transaction_type_codes.json')
-        
-        # Create test categories context file
-        context_data = {
-            "expense_categories": {
-                "Food & Dining": ["Coffee Shops", "Restaurants", "Groceries"],
-                "Utilities": ["Internet", "Phone"],
-                "Transportation": ["Gas", "Public Transport"]
-            },
-            "income_categories": {
-                "Income": ["Salary", "Freelance"]
-            }
-        }
-        with open(self.context_file, 'w') as f:
-            json.dump(context_data, f)
-        
-        # Create test transaction type codes file
-        typecode_data = {
-            "transaction_codes": [
-                {"code": "DD", "description": "Direct Debit"},
-                {"code": "DEB", "description": "Debit Card"},
-                {"code": "FPI", "description": "Faster Payment Incoming"},
-                {"code": "SO", "description": "Standing Order"}
-            ]
-        }
-        with open(self.typecode_file, 'w') as f:
-            json.dump(typecode_data, f)
-
-    def teardown_method(self):
-        """Clean up test environment after each test."""
-        import shutil
-        shutil.rmtree(self.test_dir)
 
     def create_test_dataframe(self):
         """Create a simple test DataFrame with required columns."""
@@ -65,7 +24,7 @@ class TestAIRemoteCategorization:
         })
 
     @patch('requests.post')
-    def test_categorize_some_transactions(self, mock_post):
+    def test_categorize_some_transactions(self, mock_post, test_context_files):
         """Test successful categorization of some transactions.
         
         Black box: Input DataFrame with transactions -> Output DataFrame with categories populated
@@ -86,7 +45,7 @@ class TestAIRemoteCategorization:
         df = self.create_test_dataframe()
         command = AIRemoteCategorizationCommand(
             service_url="http://api.example.com/categorize",
-            context={'categories': self.context_file, 'typecode': self.typecode_file}
+            context={'categories': str(test_context_files['categories']), 'typecode': str(test_context_files['typecodes'])}
         )
 
         # Execute
@@ -117,7 +76,7 @@ class TestAIRemoteCategorization:
         assert result_df.loc[2, 'Confidence'] == 0.92
 
     @patch('requests.post')
-    def test_no_categorization_returned(self, mock_post):
+    def test_no_categorization_returned(self, mock_post, test_context_files):
         """Test when API returns no categorizations (empty items list).
         
         Black box: Input DataFrame with transactions -> Output DataFrame with no categories populated
@@ -135,7 +94,7 @@ class TestAIRemoteCategorization:
         df = self.create_test_dataframe()
         command = AIRemoteCategorizationCommand(
             service_url="http://api.example.com/categorize",
-            context={'categories': self.context_file, 'typecode': self.typecode_file}
+            context={'categories': str(test_context_files['categories']), 'typecode': str(test_context_files['typecodes'])}
         )
 
         # Execute
@@ -158,7 +117,7 @@ class TestAIRemoteCategorization:
         assert pd.isna(result_df.loc[2, 'CategoryAnnotation'])
 
     @patch('requests.post')
-    def test_external_service_fails(self, mock_post):
+    def test_external_service_fails(self, mock_post, test_context_files):
         """Test when external service fails (connection error).
         
         Black box: Input DataFrame -> Output DataFrame unchanged (graceful failure)
@@ -171,7 +130,7 @@ class TestAIRemoteCategorization:
         original_df = df.copy()
         command = AIRemoteCategorizationCommand(
             service_url="http://api.example.com/categorize",
-            context={'categories': self.context_file, 'typecode': self.typecode_file}
+            context={'categories': str(test_context_files['categories']), 'typecode': str(test_context_files['typecodes'])}
         )
 
         # Execute (should not raise exception)
@@ -194,7 +153,7 @@ class TestAIRemoteCategorization:
         assert pd.isna(result_df.loc[2, 'CategoryAnnotation'])
 
     @patch('requests.post')
-    def test_api_returns_http_error(self, mock_post):
+    def test_api_returns_http_error(self, mock_post, test_context_files):
         """Test when API returns HTTP error status.
         
         Black box: Input DataFrame -> Output DataFrame unchanged (graceful failure)
@@ -209,7 +168,7 @@ class TestAIRemoteCategorization:
         df = self.create_test_dataframe()
         command = AIRemoteCategorizationCommand(
             service_url="http://api.example.com/categorize",
-            context={'categories': self.context_file, 'typecode': self.typecode_file}
+            context={'categories': str(test_context_files['categories']), 'typecode': str(test_context_files['typecodes'])}
         )
 
         # Execute (should not raise exception)
@@ -232,7 +191,7 @@ class TestAIRemoteCategorization:
         assert pd.isna(result_df.loc[2, 'CategoryAnnotation'])
 
     @patch('requests.post')
-    def test_empty_dataframe_input(self, mock_post):
+    def test_empty_dataframe_input(self, mock_post, test_context_files):
         """Test with empty DataFrame input.
         
         Black box: Empty DataFrame input -> Empty DataFrame output
@@ -250,7 +209,7 @@ class TestAIRemoteCategorization:
         })
         command = AIRemoteCategorizationCommand(
             service_url="http://api.example.com/categorize",
-            context={'categories': self.context_file, 'typecode': self.typecode_file}
+            context={'categories': str(test_context_files['categories']), 'typecode': str(test_context_files['typecodes'])}
         )
 
         # Execute
@@ -269,7 +228,7 @@ class TestAIRemoteCategorization:
         assert mock_post.call_count == 0  # API should not be called for empty input
 
     @patch('requests.post')
-    def test_categorize_all_transactions(self, mock_post):
+    def test_categorize_all_transactions(self, mock_post, test_context_files):
         """Test successful categorization of all transactions.
         
         Black box: Input DataFrame -> Output DataFrame with all rows categorized
@@ -291,7 +250,7 @@ class TestAIRemoteCategorization:
         df = self.create_test_dataframe()
         command = AIRemoteCategorizationCommand(
             service_url="http://api.example.com/categorize",
-            context={'categories': self.context_file, 'typecode': self.typecode_file}
+            context={'categories': str(test_context_files['categories']), 'typecode': str(test_context_files['typecodes'])}
         )
 
         # Execute
@@ -315,7 +274,7 @@ class TestAIRemoteCategorization:
             assert result_df.loc[i, 'Confidence'] is not None
 
     @patch('requests.post')
-    def test_api_response_with_null_categories(self, mock_post):
+    def test_api_response_with_null_categories(self, mock_post, test_context_files):
         """Test when API returns items with null category data.
         
         Black box: Input DataFrame -> Output with null categories left as is
@@ -337,7 +296,7 @@ class TestAIRemoteCategorization:
         df = self.create_test_dataframe()
         command = AIRemoteCategorizationCommand(
             service_url="http://api.example.com/categorize",
-            context={'categories': self.context_file, 'typecode': self.typecode_file}
+            context={'categories': str(test_context_files['categories']), 'typecode': str(test_context_files['typecodes'])}
         )
 
         # Execute
@@ -400,7 +359,7 @@ class TestAIRemoteCategorization:
         assert result_df.loc[0, 'CategoryAnnotation'] == 'Food & Dining'
 
     @patch('requests.post')
-    def test_stops_processing_when_max_errors_exceeded(self, mock_post):
+    def test_stops_processing_when_max_errors_exceeded(self, mock_post, test_context_files):
         """Test that processing stops when errors exceed max_errors threshold.
         
         Black box: Input DataFrame with API failures -> Processing stops after max_errors
@@ -426,7 +385,7 @@ class TestAIRemoteCategorization:
         # Create command with batch_size=2 and max_errors=2
         command = AIRemoteCategorizationCommand(
             service_url="http://api.example.com/categorize",
-            context={'categories': self.context_file, 'typecode': self.typecode_file},
+            context={'categories': str(test_context_files['categories']), 'typecode': str(test_context_files['typecodes'])},
             batch_size=2,
             max_errors=2
         )
@@ -454,7 +413,7 @@ class TestAIRemoteCategorization:
         assert pd.isna(result_df.loc[1, 'CategoryAnnotation'])
 
     @patch('requests.post')
-    def test_context_passed_as_json_content_not_file_paths(self, mock_post):
+    def test_context_passed_as_json_content_not_file_paths(self, mock_post, test_context_files):
         """Test that context data (categories and transaction codes) are passed as JSON content, not file paths.
         
         Validates:
@@ -476,7 +435,7 @@ class TestAIRemoteCategorization:
         df = self.create_test_dataframe()
         command = AIRemoteCategorizationCommand(
             service_url="http://api.example.com/categorize",
-            context={'categories': self.context_file, 'typecode': self.typecode_file}
+            context={'categories': str(test_context_files['categories']), 'typecode': str(test_context_files['typecodes'])}
         )
 
         # Execute
