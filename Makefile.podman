@@ -14,9 +14,11 @@ run-dev:
 		--name ${DOCKER_IMAGE_NAME}-dev-balance \
 		--cap-add=NET_RAW \
 		--userns=keep-id \
+		--security-opt label=disable \
 		-v $(shell pwd):/workspace:Z \
-		-v $(HOME)/.ssh:$(HOME)/.ssh:ro \
-		-v $(HOME)/.ssh/config:$(HOME)/.ssh/config:ro \
+		-v /home/tengelmann/.ssh:/home/tengelmann/.ssh \
+		-v ${SSH_AUTH_SOCK}:/tmp/ssh_agent \
+		-e SSH_AUTH_SOCK=/tmp/ssh_agent \
 		-w /workspace \
 		${DOCKER_IMAGE_NAME}-dev
 
@@ -28,9 +30,9 @@ build-prod:
 run-prod:
 	podman run -d --rm \
 		--name ${DOCKER_IMAGE_NAME}-prod-balance \
+		--security-opt label=disable \
 		-p 8080:80 \
-		-v $(HOME)/.ssh:$(HOME)/.ssh:ro \
-		-v $(HOME)/.ssh/config:$(HOME)/.ssh/config:ro \
+		-v /home/tengelmann/.ssh:/root/.ssh:ro \
 		${DOCKER_IMAGE_NAME}
 
 # Clean up
