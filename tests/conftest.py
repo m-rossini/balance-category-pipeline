@@ -3,6 +3,15 @@
 This module provides reusable fixtures and helper classes to reduce test code repetition
 and improve maintainability. All fixtures follow pytest conventions and can be used
 across the entire test suite.
+
+Module Structure:
+- Test Command Classes: SimpleCommand, MockLoadCommand, FakePipeline
+- Data Fixtures: Dataframes for testing
+- Temporary Directory & File Fixtures: Temp workspaces with structured directories
+- Metadata & Collector Fixtures: Pipeline metadata builders
+- Assertion Helpers: Reusable assertions for CommandResult validation
+
+For documentation on specific fixtures, search by name or section heading.
 """
 import pytest
 import pandas as pd
