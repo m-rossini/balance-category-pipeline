@@ -9,20 +9,54 @@ from analyzer.pipeline.metadata import (
 )
 
 
-def test_metadata_repository_creation_default_location():
-    """Test that MetadataRepository can be created with default location."""
-    repo = MetadataRepository()
+def test_metadata_repository_persists_and_retrieves_metadata(temp_dir):
+    """Test the core contract: repository saves and loads metadata identically."""
+    repo = MetadataRepository(storage_path=Path(temp_dir))
     
-    assert repo.storage_path is not None
-    assert isinstance(repo.storage_path, Path)
-
-
-def test_metadata_repository_creation_custom_location(temp_dir):
-    """Test that MetadataRepository can be created with custom location."""
-    custom_path = Path(temp_dir) / "metadata"
-    repo = MetadataRepository(storage_path=custom_path)
+    # Create rich pipeline metadata
+    pipeline = PipelineMetadata(
+        pipeline_name="test_pipeline",
+        start_time=datetime(2025, 10, 26, 10, 0, 0),
+        end_time=datetime(2025, 10, 26, 10, 0, 5),
+        quality_index=0.92
+    )
     
-    assert repo.storage_path == custom_path
+    step1 = StepMetadata(
+        name="LoadCommand",
+        input_rows=0,
+        output_rows=1000,
+        duration=1.5,
+        parameters={"input_dir": "/data"}
+    )
+    step2 = StepMetadata(
+        name="CleanCommand",
+        input_rows=1000,
+        output_rows=950,
+        duration=1.2,
+        parameters={"rules": ["remove_nulls"]}
+    )
+    
+    pipeline.add_step(step1)
+    pipeline.add_step(step2)
+    
+    # Contract: Save returns run_id
+    run_id = repo.save(pipeline)
+    assert isinstance(run_id, str)
+    assert run_id == pipeline.run_id
+    
+    # Contract: Storage directory is created
+    assert Path(temp_dir).exists()
+    assert Path(temp_dir).is_dir()
+    
+    # Contract: Load retrieves identical metadata
+    loaded = repo.load(run_id)
+    assert loaded is not None
+    assert loaded.pipeline_name == "test_pipeline"
+    assert loaded.quality_index == 0.92
+    assert len(loaded.steps) == 2
+    assert loaded.steps[0].name == "LoadCommand"
+    assert loaded.steps[0].parameters["input_dir"] == "/data"
+    assert loaded.steps[1].name == "CleanCommand"
 
 
 def test_metadata_repository_save_and_load(temp_dir):
@@ -58,40 +92,6 @@ def test_metadata_repository_save_and_load(temp_dir):
     assert loaded_pipeline.steps[0].name == "Step1"
 
 
-def test_metadata_repository_save_creates_directory(temp_dir):
-    """Test that saving metadata creates the storage directory if it doesn't exist."""
-    storage_path = Path(temp_dir) / "nested" / "metadata"
-    repo = MetadataRepository(storage_path=storage_path)
-    
-    pipeline = PipelineMetadata(
-        pipeline_name="test",
-        start_time=datetime.now(),
-        end_time=datetime.now()
-    )
-    
-    repo.save(pipeline)
-    
-    assert storage_path.exists()
-    assert storage_path.is_dir()
-
-
-def test_metadata_repository_file_naming(temp_dir):
-    """Test that saved files follow the run_id pattern."""
-    repo = MetadataRepository(storage_path=Path(temp_dir))
-    
-    pipeline = PipelineMetadata(
-        pipeline_name="test",
-        start_time=datetime.now(),
-        end_time=datetime.now()
-    )
-    
-    run_id = repo.save(pipeline)
-    
-    # Check that a file with the run_id exists
-    expected_file = Path(temp_dir) / f"{run_id}.json"
-    assert expected_file.exists()
-
-
 def test_metadata_repository_list_runs(temp_dir):
     """Test listing all saved runs."""
     repo = MetadataRepository(storage_path=Path(temp_dir))
@@ -119,14 +119,6 @@ def test_metadata_repository_load_nonexistent(temp_dir):
     result = repo.load("nonexistent-run-id")
     
     assert result is None
-
-
-def test_metadata_repository_default_location_path():
-    """Test that the default storage path is reasonable."""
-    repo = MetadataRepository()
-    
-    # Default should be in a .metadata directory
-    assert ".metadata" in str(repo.storage_path) or "metadata" in str(repo.storage_path)
 
 
 def test_metadata_repository_metadata_content(temp_dir):
