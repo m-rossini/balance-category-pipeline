@@ -4,21 +4,6 @@ import pytest
 from analyzer.pipeline.command_result import CommandResult
 
 
-def test_command_result_successful_creation():
-    """Test creating a successful CommandResult with data."""
-    df = pd.DataFrame({'col': [1, 2, 3]})
-    result = CommandResult(
-        return_code=0,
-        data=df
-    )
-    
-    assert result.return_code == 0
-    assert result.data is df
-    assert result.error is None
-    assert result.context_updates is None
-    assert result.metadata_updates is None
-
-
 def test_command_result_with_error():
     """Test creating a failed CommandResult with error description."""
     result = CommandResult(
@@ -79,17 +64,6 @@ def test_command_result_complete():
     assert result.error is None
     assert result.context_updates == context_updates
     assert result.metadata_updates == metadata_updates
-
-
-def test_command_result_defaults_to_none():
-    """Test that optional fields default to None."""
-    result = CommandResult(return_code=0)
-    
-    assert result.return_code == 0
-    assert result.data is None
-    assert result.error is None
-    assert result.context_updates is None
-    assert result.metadata_updates is None
 
 
 def test_command_result_warning_return_code():

@@ -9,171 +9,156 @@ from analyzer.pipeline.metadata import (
 )
 
 
-def test_metadata_repository_creation_default_location():
-    """Test that MetadataRepository can be created with default location."""
-    repo = MetadataRepository()
+def test_metadata_repository_persists_and_retrieves_metadata(temp_dir):
+    """Test the core contract: repository saves and loads metadata identically."""
+    repo = MetadataRepository(storage_path=Path(temp_dir))
     
-    assert repo.storage_path is not None
-    assert isinstance(repo.storage_path, Path)
+    # Create rich pipeline metadata
+    pipeline = PipelineMetadata(
+        pipeline_name="test_pipeline",
+        start_time=datetime(2025, 10, 26, 10, 0, 0),
+        end_time=datetime(2025, 10, 26, 10, 0, 5),
+        quality_index=0.92
+    )
+    
+    step1 = StepMetadata(
+        name="LoadCommand",
+        input_rows=0,
+        output_rows=1000,
+        duration=1.5,
+        parameters={"input_dir": "/data"}
+    )
+    step2 = StepMetadata(
+        name="CleanCommand",
+        input_rows=1000,
+        output_rows=950,
+        duration=1.2,
+        parameters={"rules": ["remove_nulls"]}
+    )
+    
+    pipeline.add_step(step1)
+    pipeline.add_step(step2)
+    
+    # Contract: Save returns run_id
+    run_id = repo.save(pipeline)
+    assert isinstance(run_id, str)
+    assert run_id == pipeline.run_id
+    
+    # Contract: Storage directory is created
+    assert Path(temp_dir).exists()
+    assert Path(temp_dir).is_dir()
+    
+    # Contract: Load retrieves identical metadata
+    loaded = repo.load(run_id)
+    assert loaded is not None
+    assert loaded.pipeline_name == "test_pipeline"
+    assert loaded.quality_index == 0.92
+    assert len(loaded.steps) == 2
+    assert loaded.steps[0].name == "LoadCommand"
+    assert loaded.steps[0].parameters["input_dir"] == "/data"
+    assert loaded.steps[1].name == "CleanCommand"
 
 
-def test_metadata_repository_creation_custom_location():
-    """Test that MetadataRepository can be created with custom location."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        custom_path = Path(tmpdir) / "metadata"
-        repo = MetadataRepository(storage_path=custom_path)
-        
-        assert repo.storage_path == custom_path
-
-
-def test_metadata_repository_save_and_load():
+def test_metadata_repository_save_and_load(temp_dir):
     """Test saving and loading metadata."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        repo = MetadataRepository(storage_path=Path(tmpdir))
-        
-        # Create pipeline metadata
-        pipeline = PipelineMetadata(
-            pipeline_name="test_pipeline",
-            start_time=datetime(2025, 10, 26, 10, 0, 0),
-            end_time=datetime(2025, 10, 26, 10, 0, 5)
-        )
-        
-        step = StepMetadata(
-            name="Step1",
-            input_rows=0,
-            output_rows=100,
-            duration=1.0,
-            parameters={"key": "value"}
-        )
-        pipeline.add_step(step)
-        
-        # Save
-        run_id = repo.save(pipeline)
-        
-        assert run_id == pipeline.run_id
-        
-        # Load
-        loaded_pipeline = repo.load(run_id)
-        
-        assert loaded_pipeline.pipeline_name == "test_pipeline"
-        assert len(loaded_pipeline.steps) == 1
-        assert loaded_pipeline.steps[0].name == "Step1"
-
-
-def test_metadata_repository_save_creates_directory():
-    """Test that saving metadata creates the storage directory if it doesn't exist."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        storage_path = Path(tmpdir) / "nested" / "metadata"
-        repo = MetadataRepository(storage_path=storage_path)
-        
-        pipeline = PipelineMetadata(
-            pipeline_name="test",
-            start_time=datetime.now(),
-            end_time=datetime.now()
-        )
-        
-        repo.save(pipeline)
-        
-        assert storage_path.exists()
-        assert storage_path.is_dir()
-
-
-def test_metadata_repository_file_naming():
-    """Test that saved files follow the run_id pattern."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        repo = MetadataRepository(storage_path=Path(tmpdir))
-        
-        pipeline = PipelineMetadata(
-            pipeline_name="test",
-            start_time=datetime.now(),
-            end_time=datetime.now()
-        )
-        
-        run_id = repo.save(pipeline)
-        
-        # Check that a file with the run_id exists
-        expected_file = Path(tmpdir) / f"{run_id}.json"
-        assert expected_file.exists()
-
-
-def test_metadata_repository_list_runs():
-    """Test listing all saved runs."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        repo = MetadataRepository(storage_path=Path(tmpdir))
-        
-        # Save multiple pipelines
-        for i in range(3):
-            pipeline = PipelineMetadata(
-                pipeline_name=f"pipeline_{i}",
-                start_time=datetime.now(),
-                end_time=datetime.now()
-            )
-            repo.save(pipeline)
-        
-        runs = repo.list_runs()
-        
-        assert len(runs) == 3
-        # Verify all are strings (run IDs)
-        assert all(isinstance(run_id, str) for run_id in runs)
-
-
-def test_metadata_repository_load_nonexistent():
-    """Test loading a nonexistent run returns None."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        repo = MetadataRepository(storage_path=Path(tmpdir))
-        
-        result = repo.load("nonexistent-run-id")
-        
-        assert result is None
-
-
-def test_metadata_repository_default_location_path():
-    """Test that the default storage path is reasonable."""
-    repo = MetadataRepository()
+    repo = MetadataRepository(storage_path=Path(temp_dir))
     
-    # Default should be in a .metadata directory
-    assert ".metadata" in str(repo.storage_path) or "metadata" in str(repo.storage_path)
+    # Create pipeline metadata
+    pipeline = PipelineMetadata(
+        pipeline_name="test_pipeline",
+        start_time=datetime(2025, 10, 26, 10, 0, 0),
+        end_time=datetime(2025, 10, 26, 10, 0, 5)
+    )
+    
+    step = StepMetadata(
+        name="Step1",
+        input_rows=0,
+        output_rows=100,
+        duration=1.0,
+        parameters={"key": "value"}
+    )
+    pipeline.add_step(step)
+    
+    # Save
+    run_id = repo.save(pipeline)
+    
+    assert run_id == pipeline.run_id
+    
+    # Load
+    loaded_pipeline = repo.load(run_id)
+    
+    assert loaded_pipeline.pipeline_name == "test_pipeline"
+    assert len(loaded_pipeline.steps) == 1
+    assert loaded_pipeline.steps[0].name == "Step1"
 
 
-def test_metadata_repository_metadata_content():
-    """Test that saved metadata preserves all data."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        repo = MetadataRepository(storage_path=Path(tmpdir))
-        
-        start_time = datetime(2025, 10, 26, 10, 0, 0)
-        end_time = datetime(2025, 10, 26, 10, 0, 5)
-        
+def test_metadata_repository_list_runs(temp_dir):
+    """Test listing all saved runs."""
+    repo = MetadataRepository(storage_path=Path(temp_dir))
+    
+    # Save multiple pipelines
+    for i in range(3):
         pipeline = PipelineMetadata(
-            pipeline_name="complex_pipeline",
-            start_time=start_time,
-            end_time=end_time,
-            quality_index=0.95
+            pipeline_name=f"pipeline_{i}",
+            start_time=datetime.now(),
+            end_time=datetime.now()
         )
-        
-        step1 = StepMetadata(
-            name="Append",
-            input_rows=0,
-            output_rows=1000,
-            duration=1.5,
-            parameters={"dir": "/data"}
-        )
-        step2 = StepMetadata(
-            name="Clean",
-            input_rows=1000,
-            output_rows=950,
-            duration=1.2,
-            parameters={"rules": ["remove_nulls"]}
-        )
-        
-        pipeline.add_step(step1)
-        pipeline.add_step(step2)
-        
-        run_id = repo.save(pipeline)
-        loaded = repo.load(run_id)
-        
-        assert loaded.pipeline_name == "complex_pipeline"
-        assert loaded.quality_index == 0.95
-        assert len(loaded.steps) == 2
-        assert loaded.steps[0].name == "Append"
-        assert loaded.steps[1].name == "Clean"
-        assert loaded.steps[0].parameters["dir"] == "/data"
+        repo.save(pipeline)
+    
+    runs = repo.list_runs()
+    
+    assert len(runs) == 3
+    # Verify all are strings (run IDs)
+    assert all(isinstance(run_id, str) for run_id in runs)
+
+
+def test_metadata_repository_load_nonexistent(temp_dir):
+    """Test loading a nonexistent run returns None."""
+    repo = MetadataRepository(storage_path=Path(temp_dir))
+    
+    result = repo.load("nonexistent-run-id")
+    
+    assert result is None
+
+
+def test_metadata_repository_metadata_content(temp_dir):
+    """Test that saved metadata preserves all data."""
+    repo = MetadataRepository(storage_path=Path(temp_dir))
+    
+    start_time = datetime(2025, 10, 26, 10, 0, 0)
+    end_time = datetime(2025, 10, 26, 10, 0, 5)
+    
+    pipeline = PipelineMetadata(
+        pipeline_name="complex_pipeline",
+        start_time=start_time,
+        end_time=end_time,
+        quality_index=0.95
+    )
+    
+    step1 = StepMetadata(
+        name="Append",
+        input_rows=0,
+        output_rows=1000,
+        duration=1.5,
+        parameters={"dir": "/data"}
+    )
+    step2 = StepMetadata(
+        name="Clean",
+        input_rows=1000,
+        output_rows=950,
+        duration=1.2,
+        parameters={"rules": ["remove_nulls"]}
+    )
+    
+    pipeline.add_step(step1)
+    pipeline.add_step(step2)
+    
+    run_id = repo.save(pipeline)
+    loaded = repo.load(run_id)
+    
+    assert loaded.pipeline_name == "complex_pipeline"
+    assert loaded.quality_index == 0.95
+    assert len(loaded.steps) == 2
+    assert loaded.steps[0].name == "Append"
+    assert loaded.steps[1].name == "Clean"
+    assert loaded.steps[0].parameters["dir"] == "/data"

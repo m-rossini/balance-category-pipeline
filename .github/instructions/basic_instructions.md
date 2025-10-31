@@ -1,6 +1,11 @@
 ---
 applyTo: '**'
 ---
+
+* Before work:
+    * Make sure you are aware of previous decisions and design that are located under summaries
+    * Understand the design based on that summaries
+    * Note that sometimes a summary might not be there due to any reason since forgetting to create or even losing it
 * For Operations mode:
     * When generating code, please go step by step, make one change at a time
     * If you are unsure about something, ask for clarification.
@@ -13,6 +18,7 @@ applyTo: '**'
     * Take a TDD approach: write tests first, then write code to make the tests pass, and show each step before proceeding to the next.
     * Follow the SOLID principles of software development.
     * Use the best practices of software engineer, balancing for good engineering without over engineering
+    * Always proposes a desgin before anything that we can discuss to reach to a agreed implementation
 
 * For Coding:
     * TRY TO KEEP LOGGING STATEMENTS INTO A single LINE
@@ -37,4 +43,9 @@ applyTo: '**'
 * For package installation:
     * It is OK to use pip or poetry to install on demand packages.
     * All on-demand packages installed should be added to the dependencies file, being it requirements.txt, project.toml or other
+
+* For After Work:
+    * Always create a summary of the work done.
+    * Save it as a .md file in summaries sub directory
+    * Start the name with a data in the form YYYY-MM-DD-{some proper identifiable name}
 

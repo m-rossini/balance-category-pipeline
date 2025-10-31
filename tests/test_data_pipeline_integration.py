@@ -1,232 +1,113 @@
 import os
-import tempfile
-import shutil
+import pytest
 import pandas as pd
-# import pytest
 from unittest.mock import patch, MagicMock
 
 from analyzer.workflows import bank_transaction_analysis, ai_categorization, minimal_load
 from analyzer.pipeline.pipeline_commands import MergeFilesCommand, CleanDataCommand, AppendFilesCommand, AIRemoteCategorizationCommand
+from conftest import assert_command_result_success, assert_command_result_failure
 
 
 class TestDataPipelineIntegration:
     """Integration tests for complete data pipeline workflows."""
 
-    def setup_method(self):
-        """Set up test environment before each test."""
-        # Create temporary directory for test data
-        self.test_dir = tempfile.mkdtemp()
-        self.original_cwd = os.getcwd()
+    @pytest.mark.parametrize("workflow_module,mock_response_data,validate_contents,check_output_file", [
+        (bank_transaction_analysis, b'{"code": "SUCCESS", "items": []}', True, 'annotated_bos.csv'),
+        (ai_categorization, b'{"code": "SUCCESS", "items": [{"id": "1", "category": "Food & Dining", "subcategory": "Coffee Shops", "confidence": 0.95}]}', False, None),
+        (minimal_load, None, True, None),
+    ])
+    @patch('urllib.request.urlopen')
+    def test_workflow_integration(self, mock_urlopen, workflow_module, mock_response_data, validate_contents, check_output_file, temp_workspace, test_csv_files, test_context_files):
+        """Test workflow integration with parametrized variations.
+        
+        Parametrizes:
+        - bank_transaction_analysis: requires API mock, validates full contents
+        - ai_categorization: requires API mock, only validates return type
+        - minimal_load: no API needed, validates full contents
+        """
+        # Setup mock response (only needed for non-minimal_load workflows)
+        if mock_response_data is not None:
+            mock_response = MagicMock()
+            mock_response.read.return_value = mock_response_data
+            mock_response.__enter__.return_value = mock_response
+            mock_urlopen.return_value = mock_response
 
-        # Create test data directory structure
-        self.test_data_dir = os.path.join(self.test_dir, 'data')
-        self.test_extratos_dir = os.path.join(self.test_data_dir, 'extratos', 'bank_bos')
-        self.test_training_dir = os.path.join(self.test_data_dir, 'training')
-        self.test_output_dir = os.path.join(self.test_data_dir, 'output')
-        self.test_context_dir = os.path.join(self.test_dir, 'context')
+        # Change to temp workspace and run workflow
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(temp_workspace['root'])
+            
+            # Get and run the pipeline
+            pipeline = workflow_module.get_pipeline()
+            result_df = pipeline.run()
 
-        # Create directories
-        os.makedirs(self.test_extratos_dir, exist_ok=True)
-        os.makedirs(self.test_training_dir, exist_ok=True)
-        os.makedirs(self.test_output_dir, exist_ok=True)
-        os.makedirs(self.test_context_dir, exist_ok=True)
+            # All workflows must return DataFrames (common contract)
+            assert isinstance(result_df, pd.DataFrame), f"{workflow_module.__name__} should return DataFrame"
 
-        # Change to test directory
-        os.chdir(self.test_dir)
+            # Some workflows validate additional contracts
+            if validate_contents:
+                assert not result_df.empty, f"{workflow_module.__name__} should return non-empty DataFrame"
+                assert len(result_df) == 5, f"{workflow_module.__name__} should have 5 transactions"
 
-    def teardown_method(self):
-        """Clean up test environment after each test."""
-        # Change back to original directory
-        os.chdir(self.original_cwd)
-        # Remove temporary directory
-        shutil.rmtree(self.test_dir)
+                # Check expected columns
+                expected_columns = ['TransactionDate', 'TransactionType', 'TransactionDescription', 'TransactionValue']
+                for col in expected_columns:
+                    assert col in result_df.columns, f"Missing column {col} in {workflow_module.__name__}"
 
-    def create_test_transaction_data(self):
-        """Create test CSV files with sample transaction data."""
-        # Create sample transaction data
-        data1 = {
-            'TransactionNumber': [1, 2, 3],
-            'TransactionDate': ['01/10/2025', '02/10/2025', '03/10/2025'],
-            'TransactionType': ['DEB', 'FPI', 'DEB'],
-            'TransactionDescription': ['STARBUCKS COFFEE', 'SALARY PAYMENT', 'TESCO SUPERMARKET'],
-            'TransactionValue': [-5.50, 2500.00, -85.30]
-        }
-
-        data2 = {
-            'TransactionNumber': [4, 5],
-            'TransactionDate': ['04/10/2025', '05/10/2025'],
-            'TransactionType': ['DD', 'DEB'],
-            'TransactionDescription': ['BT GROUP PLC', 'AMAZON PURCHASE'],
-            'TransactionValue': [-45.00, -29.99]
-        }
-
-        df1 = pd.DataFrame(data1)
-        df2 = pd.DataFrame(data2)
-
-        # Save test CSV files
-        df1.to_csv(os.path.join(self.test_extratos_dir, 'test_transactions_1.csv'), index=False)
-        df2.to_csv(os.path.join(self.test_extratos_dir, 'test_transactions_2.csv'), index=False)
-
-        return df1, df2
-
-    def create_test_training_data(self):
-        """Create test training data file."""
-        training_data = {
-            'TransactionNumber': [1, 2, 3],
-            'CategoryAnnotation': ['Food & Dining', 'Income', 'Food & Dining'],
-            'SubCategoryAnnotation': ['Coffee Shops', 'Salary', 'Groceries'],
-            'Confidence': [0.9, 0.95, 0.88]
-        }
-
-        df = pd.DataFrame(training_data)
-        df.to_csv(os.path.join(self.test_training_dir, 'factoids.csv'), index=False)
-        return df
-
-    def create_test_context_files(self):
-        """Create test context files."""
-        # Categories file
-        categories = {
-            "expense_categories": {
-                "Food & Dining": ["Coffee Shops", "Restaurants", "Groceries"],
-                "Utilities": ["Internet", "Phone"],
-                "Transportation": ["Gas", "Public Transport"]
-            },
-            "income_categories": {
-                "Income": ["Salary", "Freelance"]
-            }
-        }
-
-        import json
-        with open(os.path.join(self.test_context_dir, 'candidate_categories.json'), 'w') as f:
-            json.dump(categories, f)
-
-        # Transaction codes file (JSON format)
-        codes = {
-            "transaction_codes": [
-                {"code": "DD", "description": "Direct Debit"},
-                {"code": "DEB", "description": "Debit Card"},
-                {"code": "FPI", "description": "Faster Payment Incoming"},
-                {"code": "SO", "description": "Standing Order"}
-            ]
-        }
-
-        with open(os.path.join(self.test_context_dir, 'transaction_type_codes.json'), 'w') as f:
-            json.dump(codes, f)
+                # Check output file if specified
+                if check_output_file:
+                    assert os.path.exists(temp_workspace['output'] / check_output_file), f"Expected output file {check_output_file} not created"
+        finally:
+            os.chdir(original_cwd)
 
     @patch('urllib.request.urlopen')
-    def test_bank_transaction_analysis_workflow(self, mock_urlopen):
-        """Test the complete bank_transaction_analysis workflow."""
-        # Mock the external API response
-        mock_response = MagicMock()
-        mock_response.read.return_value = b'{"code": "SUCCESS", "items": []}'
-        mock_response.__enter__.return_value = mock_response
-        mock_urlopen.return_value = mock_response
-
-        # Setup test data
-        self.create_test_transaction_data()
-        self.create_test_training_data()
-        self.create_test_context_files()
-
-        # Get and run the pipeline
-        pipeline = bank_transaction_analysis.get_pipeline()
-        result_df = pipeline.run()
-
-        # Validate results
-        assert isinstance(result_df, pd.DataFrame)
-        assert not result_df.empty
-        assert len(result_df) == 5  # 3 + 2 transactions from the two CSV files
-
-        # Check that expected columns exist
-        expected_columns = ['TransactionDate', 'TransactionType', 'TransactionDescription', 'TransactionValue']
-        for col in expected_columns:
-            assert col in result_df.columns
-
-        # Check that output file was created
-        assert os.path.exists(os.path.join(self.test_output_dir, 'annotated_bos.csv'))
-
-    @patch('urllib.request.urlopen')
-    def test_ai_categorization_workflow(self, mock_urlopen):
-        """Test the complete ai_categorization workflow."""
-        # Mock the external API response
-        mock_response = MagicMock()
-        mock_response.read.return_value = b'{"code": "SUCCESS", "items": [{"id": "1", "category": "Food & Dining", "subcategory": "Coffee Shops", "confidence": 0.95}]}'
-        mock_response.__enter__.return_value = mock_response
-        mock_urlopen.return_value = mock_response
-
-        # Setup test data
-        df1, df2 = self.create_test_transaction_data()
-        self.create_test_training_data()
-        self.create_test_context_files()
-
-        # Get and run the pipeline
-        pipeline = ai_categorization.get_pipeline()
-        result_df = pipeline.run()
-
-        # Validate results
-        assert isinstance(result_df, pd.DataFrame)
-
-    def test_minimal_load_workflow(self):
-        """Test the minimal_load workflow."""
-        # Setup test data
-        df1, df2 = self.create_test_transaction_data()
-        self.create_test_context_files()
-
-        # Get and run the pipeline
-        pipeline = minimal_load.get_pipeline()
-        result_df = pipeline.run()
-
-        # Validate results
-        assert isinstance(result_df, pd.DataFrame)
-        assert not result_df.empty
-        assert len(result_df) == 5  # 3 + 2 transactions
-
-        # Check that expected columns exist
-        expected_columns = ['TransactionDate', 'TransactionType', 'TransactionDescription', 'TransactionValue']
-        for col in expected_columns:
-            assert col in result_df.columns
-
-    @patch('urllib.request.urlopen')
-    def test_workflow_error_handling(self, mock_urlopen):
+    def test_workflow_error_handling(self, mock_urlopen, temp_workspace, test_csv_files, test_context_files):
         """Test that workflows handle errors gracefully."""
         # Mock the external API to raise an exception
         mock_urlopen.side_effect = Exception("API service unavailable")
 
-        # Setup minimal test data
-        self.create_test_transaction_data()
-        self.create_test_context_files()
+        # Change to temp workspace
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(temp_workspace['root'])
+            
+            # Files are already created by fixtures in their proper locations
+            # Run pipeline - should handle the error gracefully
+            pipeline = ai_categorization.get_pipeline()
+            result_df = pipeline.run()
 
-        # Run pipeline - should handle the error gracefully
-        pipeline = ai_categorization.get_pipeline()
-        result_df = pipeline.run()
+            # Should return a DataFrame rather than crashing
+            assert isinstance(result_df, pd.DataFrame)
+        finally:
+            os.chdir(original_cwd)
 
-        # Should return a DataFrame rather than crashing
-        assert isinstance(result_df, pd.DataFrame)
-
-    def test_workflow_with_missing_context_files(self):
+    def test_workflow_with_missing_context_files(self, temp_workspace, test_csv_files):
         """Test workflows handle missing context files gracefully."""
-        # Setup test data but no context files
-        self.create_test_transaction_data()
+        # Change to temp workspace
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(temp_workspace['root'])
+            
+            # Files are already created by fixtures but no context files
+            # Run minimal workflow (should work without context)
+            pipeline = minimal_load.get_pipeline()
+            result_df = pipeline.run()
 
-        # Run minimal workflow (should work without context)
-        pipeline = minimal_load.get_pipeline()
-        result_df = pipeline.run()
+            assert isinstance(result_df, pd.DataFrame)
+            assert len(result_df) == 5
+        finally:
+            os.chdir(original_cwd)
 
-        assert isinstance(result_df, pd.DataFrame)
-        assert len(result_df) == 5
-
-    def test_append_files_command(self):
+    def test_append_files_command(self, temp_workspace, test_csv_files):
         """Test AppendFilesCommand loads and concatenates multiple CSV files."""
-        # Setup test data
-        self.create_test_transaction_data()
-
+        # Files are already created by test_csv_files fixture in extratos dir
+        
         # Test append command
-        append_command = AppendFilesCommand(input_dir=self.test_extratos_dir, file_glob='*.csv')
+        append_command = AppendFilesCommand(input_dir=str(temp_workspace['extratos']), file_glob='*.csv')
         result = append_command.process()
 
         # Assert CommandResult structure
-        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None"
-        assert result.error is None, f"Expected error=None, got {result.error}"
+        assert_command_result_success(result)
         
         result_df = result.data
         
@@ -255,29 +136,24 @@ class TestDataPipelineIntegration:
         result = clean_command.process(df)
         
         # Assert CommandResult structure
-        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None"
-        assert result.error is None, f"Expected error=None, got {result.error}"
+        assert_command_result_success(result)
         
         assert result.data.equals(df)  # default_clean just returns df
 
-    def test_append_files_command_input_files_branch(self):
+    def test_append_files_command_input_files_branch(self, temp_workspace, test_csv_files):
         """Test AppendFilesCommand using input_files parameter."""
-        # Create test files
-        self.create_test_transaction_data()
-
+        # Files are already created by test_csv_files fixture
+        
         # Use input_files instead of input_dir
         file_paths = [
-            os.path.join(self.test_extratos_dir, 'test_transactions_1.csv'),
-            os.path.join(self.test_extratos_dir, 'test_transactions_2.csv')
+            str(temp_workspace['extratos'] / 'test_transactions_1.csv'),
+            str(temp_workspace['extratos'] / 'test_transactions_2.csv')
         ]
         append_command = AppendFilesCommand(input_files=file_paths)
         result = append_command.process()
 
         # Assert CommandResult structure
-        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None"
-        assert result.error is None, f"Expected error=None, got {result.error}"
+        assert_command_result_success(result)
         
         result_df = result.data
         
@@ -294,14 +170,14 @@ class TestDataPipelineIntegration:
         assert result.data is None, "Expected data=None on error"
         assert result.error is not None, f"Expected error dict, got {result.error}"
 
-    def test_append_files_command_read_error(self):
+    def test_append_files_command_read_error(self, temp_workspace):
         """Test AppendFilesCommand when file read fails."""
         # Create a file that will fail to read (e.g., invalid CSV)
-        invalid_file = os.path.join(self.test_extratos_dir, 'invalid.csv')
+        invalid_file = temp_workspace['extratos'] / 'invalid.csv'
         with open(invalid_file, 'w') as f:
             f.write("invalid content\n")
 
-        append_command = AppendFilesCommand(input_files=[invalid_file])
+        append_command = AppendFilesCommand(input_files=[str(invalid_file)])
         result = append_command.process()
         
         # Even with invalid content, pandas can parse it (treats first line as header)
