@@ -2,6 +2,7 @@ import pandas as pd
 from unittest.mock import patch, MagicMock
 
 from analyzer.pipeline.pipeline_commands import AIRemoteCategorizationCommand
+from conftest import assert_command_result_success, assert_command_result_failure
 
 
 class TestAIRemoteCategorization:
@@ -52,9 +53,7 @@ class TestAIRemoteCategorization:
         result = command.process(df)
         
         # Assert CommandResult structure
-        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None"
-        assert result.error is None, f"Expected error=None, got {result.error}"
+        assert_command_result_success(result)
         
         result_df = result.data
 
@@ -101,9 +100,7 @@ class TestAIRemoteCategorization:
         result = command.process(df)
         
         # Assert CommandResult structure
-        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None"
-        assert result.error is None, f"Expected error=None, got {result.error}"
+        assert_command_result_success(result)
         
         result_df = result.data
 
@@ -137,9 +134,7 @@ class TestAIRemoteCategorization:
         result = command.process(df)
         
         # Assert CommandResult structure - batch failures are handled gracefully (return_code=0, data returned)
-        assert result.return_code == 0, f"Expected return_code=0 (graceful failure handling), got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None (returned unchanged)"
-        assert result.error is None, f"Expected error=None (graceful failure, not exception), got {result.error}"
+        assert_command_result_success(result)
         
         result_df = result.data
 
@@ -175,9 +170,7 @@ class TestAIRemoteCategorization:
         result = command.process(df)
         
         # Assert CommandResult structure - batch failures are handled gracefully (return_code=0, data returned)
-        assert result.return_code == 0, f"Expected return_code=0 (graceful failure handling), got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None (returned unchanged)"
-        assert result.error is None, f"Expected error=None (graceful failure, not exception), got {result.error}"
+        assert_command_result_success(result)
         
         result_df = result.data
 
@@ -216,9 +209,7 @@ class TestAIRemoteCategorization:
         result = command.process(df)
         
         # Assert CommandResult structure
-        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None"
-        assert result.error is None, f"Expected error=None, got {result.error}"
+        assert_command_result_success(result)
         
         result_df = result.data
 
@@ -257,9 +248,7 @@ class TestAIRemoteCategorization:
         result = command.process(df)
         
         # Assert CommandResult structure
-        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None"
-        assert result.error is None, f"Expected error=None, got {result.error}"
+        assert_command_result_success(result)
         
         result_df = result.data
 
@@ -303,9 +292,7 @@ class TestAIRemoteCategorization:
         result = command.process(df)
         
         # Assert CommandResult structure
-        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None"
-        assert result.error is None, f"Expected error=None, got {result.error}"
+        assert_command_result_success(result)
         
         result_df = result.data
 
@@ -346,9 +333,7 @@ class TestAIRemoteCategorization:
         result = command.process(df)
         
         # Assert CommandResult structure
-        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None"
-        assert result.error is None, f"Expected error=None, got {result.error}"
+        assert_command_result_success(result)
         
         result_df = result.data
 
@@ -394,9 +379,7 @@ class TestAIRemoteCategorization:
         result = command.process(df)
         
         # Assert CommandResult structure
-        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None"
-        assert result.error is None, f"Expected error=None, got {result.error}"
+        assert_command_result_success(result)
         
         result_df = result.data
 
@@ -442,9 +425,7 @@ class TestAIRemoteCategorization:
         result = command.process(df)
         
         # Assert CommandResult structure
-        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None"
-        assert result.error is None, f"Expected error=None, got {result.error}"
+        assert_command_result_success(result)
         
         result_df = result.data
 

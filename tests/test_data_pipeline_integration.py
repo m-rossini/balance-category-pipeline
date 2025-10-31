@@ -5,6 +5,7 @@ from unittest.mock import patch, MagicMock
 
 from analyzer.workflows import bank_transaction_analysis, ai_categorization, minimal_load
 from analyzer.pipeline.pipeline_commands import MergeFilesCommand, CleanDataCommand, AppendFilesCommand, AIRemoteCategorizationCommand
+from conftest import assert_command_result_success, assert_command_result_failure
 
 
 class TestDataPipelineIntegration:
@@ -106,9 +107,7 @@ class TestDataPipelineIntegration:
         result = append_command.process()
 
         # Assert CommandResult structure
-        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None"
-        assert result.error is None, f"Expected error=None, got {result.error}"
+        assert_command_result_success(result)
         
         result_df = result.data
         
@@ -137,9 +136,7 @@ class TestDataPipelineIntegration:
         result = clean_command.process(df)
         
         # Assert CommandResult structure
-        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None"
-        assert result.error is None, f"Expected error=None, got {result.error}"
+        assert_command_result_success(result)
         
         assert result.data.equals(df)  # default_clean just returns df
 
@@ -156,9 +153,7 @@ class TestDataPipelineIntegration:
         result = append_command.process()
 
         # Assert CommandResult structure
-        assert result.return_code == 0, f"Expected return_code=0, got {result.return_code}"
-        assert result.data is not None, "Expected data to be not None"
-        assert result.error is None, f"Expected error=None, got {result.error}"
+        assert_command_result_success(result)
         
         result_df = result.data
         
