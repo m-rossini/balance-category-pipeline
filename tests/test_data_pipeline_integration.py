@@ -1,4 +1,5 @@
 import os
+import pytest
 import pandas as pd
 from unittest.mock import patch, MagicMock
 
@@ -9,87 +10,52 @@ from analyzer.pipeline.pipeline_commands import MergeFilesCommand, CleanDataComm
 class TestDataPipelineIntegration:
     """Integration tests for complete data pipeline workflows."""
 
+    @pytest.mark.parametrize("workflow_module,mock_response_data,validate_contents,check_output_file", [
+        (bank_transaction_analysis, b'{"code": "SUCCESS", "items": []}', True, 'annotated_bos.csv'),
+        (ai_categorization, b'{"code": "SUCCESS", "items": [{"id": "1", "category": "Food & Dining", "subcategory": "Coffee Shops", "confidence": 0.95}]}', False, None),
+        (minimal_load, None, True, None),
+    ])
     @patch('urllib.request.urlopen')
-    def test_bank_transaction_analysis_workflow(self, mock_urlopen, temp_workspace, test_csv_files, test_context_files):
-        """Test the complete bank_transaction_analysis workflow."""
-        # Mock the external API response
-        mock_response = MagicMock()
-        mock_response.read.return_value = b'{"code": "SUCCESS", "items": []}'
-        mock_response.__enter__.return_value = mock_response
-        mock_urlopen.return_value = mock_response
+    def test_workflow_integration(self, mock_urlopen, workflow_module, mock_response_data, validate_contents, check_output_file, temp_workspace, test_csv_files, test_context_files):
+        """Test workflow integration with parametrized variations.
+        
+        Parametrizes:
+        - bank_transaction_analysis: requires API mock, validates full contents
+        - ai_categorization: requires API mock, only validates return type
+        - minimal_load: no API needed, validates full contents
+        """
+        # Setup mock response (only needed for non-minimal_load workflows)
+        if mock_response_data is not None:
+            mock_response = MagicMock()
+            mock_response.read.return_value = mock_response_data
+            mock_response.__enter__.return_value = mock_response
+            mock_urlopen.return_value = mock_response
 
-        # Change to temp workspace
+        # Change to temp workspace and run workflow
         original_cwd = os.getcwd()
         try:
             os.chdir(temp_workspace['root'])
             
-            # Files are already created by test_csv_files fixture in extratos dir
-            # Just need to verify they're accessible and run the pipeline
-            
             # Get and run the pipeline
-            pipeline = bank_transaction_analysis.get_pipeline()
+            pipeline = workflow_module.get_pipeline()
             result_df = pipeline.run()
 
-            # Validate results
-            assert isinstance(result_df, pd.DataFrame)
-            assert not result_df.empty
-            assert len(result_df) == 5  # 3 + 2 transactions from the two CSV files
+            # All workflows must return DataFrames (common contract)
+            assert isinstance(result_df, pd.DataFrame), f"{workflow_module.__name__} should return DataFrame"
 
-            # Check that expected columns exist
-            expected_columns = ['TransactionDate', 'TransactionType', 'TransactionDescription', 'TransactionValue']
-            for col in expected_columns:
-                assert col in result_df.columns
+            # Some workflows validate additional contracts
+            if validate_contents:
+                assert not result_df.empty, f"{workflow_module.__name__} should return non-empty DataFrame"
+                assert len(result_df) == 5, f"{workflow_module.__name__} should have 5 transactions"
 
-            # Check that output file was created
-            assert os.path.exists(temp_workspace['output'] / 'annotated_bos.csv')
-        finally:
-            os.chdir(original_cwd)
+                # Check expected columns
+                expected_columns = ['TransactionDate', 'TransactionType', 'TransactionDescription', 'TransactionValue']
+                for col in expected_columns:
+                    assert col in result_df.columns, f"Missing column {col} in {workflow_module.__name__}"
 
-    @patch('urllib.request.urlopen')
-    def test_ai_categorization_workflow(self, mock_urlopen, temp_workspace, test_csv_files, test_context_files):
-        """Test the complete ai_categorization workflow."""
-        # Mock the external API response
-        mock_response = MagicMock()
-        mock_response.read.return_value = b'{"code": "SUCCESS", "items": [{"id": "1", "category": "Food & Dining", "subcategory": "Coffee Shops", "confidence": 0.95}]}'
-        mock_response.__enter__.return_value = mock_response
-        mock_urlopen.return_value = mock_response
-
-        # Change to temp workspace
-        original_cwd = os.getcwd()
-        try:
-            os.chdir(temp_workspace['root'])
-            
-            # Files are already created by fixtures in their proper locations
-            # Get and run the pipeline
-            pipeline = ai_categorization.get_pipeline()
-            result_df = pipeline.run()
-
-            # Validate results
-            assert isinstance(result_df, pd.DataFrame)
-        finally:
-            os.chdir(original_cwd)
-
-    def test_minimal_load_workflow(self, temp_workspace, test_csv_files, test_context_files):
-        """Test the minimal_load workflow."""
-        # Change to temp workspace
-        original_cwd = os.getcwd()
-        try:
-            os.chdir(temp_workspace['root'])
-            
-            # Files are already created by fixtures in their proper locations
-            # Get and run the pipeline
-            pipeline = minimal_load.get_pipeline()
-            result_df = pipeline.run()
-
-            # Validate results
-            assert isinstance(result_df, pd.DataFrame)
-            assert not result_df.empty
-            assert len(result_df) == 5  # 3 + 2 transactions
-
-            # Check that expected columns exist
-            expected_columns = ['TransactionDate', 'TransactionType', 'TransactionDescription', 'TransactionValue']
-            for col in expected_columns:
-                assert col in result_df.columns
+                # Check output file if specified
+                if check_output_file:
+                    assert os.path.exists(temp_workspace['output'] / check_output_file), f"Expected output file {check_output_file} not created"
         finally:
             os.chdir(original_cwd)
 
