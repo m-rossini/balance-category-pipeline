@@ -9,6 +9,7 @@ RUN apt-get update && apt-get upgrade -y && \
         ca-certificates \
         curl \
         git \
+        openssh-client \
         sudo \
         vim \
         less \
@@ -22,6 +23,9 @@ RUN apt-get update && apt-get upgrade -y && \
         iproute2 \
         procps \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Configure git to handle SSH key verification
+RUN git config --global --add safe.directory '*'
 
 # Install pip packages globally (they'll be available to any user)
 RUN pip install --no-cache-dir poetry

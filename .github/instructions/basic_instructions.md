@@ -46,6 +46,6 @@ applyTo: '**'
 
 * For After Work:
     * Always create a summary of the work done.
-    * Save it as a .md file in summaries sub directory
+    * Save it as a .md file in summaries sub directory rthat is just under the root directory
     * Start the name with a data in the form YYYY-MM-DD-{some proper identifiable name}
 
