@@ -7,19 +7,7 @@ from analyzer.pipeline.pipeline_commands import (
 )
 from analyzer.pipeline.quality import SimpleQualityCalculator
 from analyzer.pipeline.metadata import MetadataCollector
-
-
-class MockLoadCommand(PipelineCommand):
-    """Mock command that loads categorized data."""
-    def process(self, df: pd.DataFrame, context=None) -> CommandResult:
-        # Create mock categorized data
-        data = pd.DataFrame({
-            'CategoryAnnotation': ['Food', 'Transport', 'Utilities', 'Entertainment'],
-            'SubCategoryAnnotation': ['Coffee', 'Bus', 'Electric', 'Movie'],
-            'Confidence': [0.95, 0.92, 0.88, 0.75],
-            'Amount': [5.50, 25.00, 120.00, 15.00]
-        })
-        return CommandResult(return_code=0, data=data)
+from conftest import MockLoadCommand
 
 
 def test_quality_analysis_in_complete_pipeline():

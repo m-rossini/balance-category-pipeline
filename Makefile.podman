@@ -15,6 +15,8 @@ run-dev:
 		--cap-add=NET_RAW \
 		--userns=keep-id \
 		-v $(shell pwd):/workspace:Z \
+		-v $(HOME)/.ssh:$(HOME)/.ssh:ro \
+		-v $(HOME)/.ssh/config:$(HOME)/.ssh/config:ro \
 		-w /workspace \
 		${DOCKER_IMAGE_NAME}-dev
 
@@ -27,6 +29,8 @@ run-prod:
 	podman run -d --rm \
 		--name ${DOCKER_IMAGE_NAME}-prod-balance \
 		-p 8080:80 \
+		-v $(HOME)/.ssh:$(HOME)/.ssh:ro \
+		-v $(HOME)/.ssh/config:$(HOME)/.ssh/config:ro \
 		${DOCKER_IMAGE_NAME}
 
 # Clean up

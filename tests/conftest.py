@@ -10,13 +10,17 @@ import tempfile
 import os
 import json
 import sys
+import argparse
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+from datetime import datetime
 
 # Add src directory to Python path so we can import analyzer modules
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 from analyzer.pipeline.pipeline_commands import PipelineCommand, CommandResult
-from analyzer.pipeline.metadata import MetadataCollector
+from analyzer.pipeline.metadata import MetadataCollector, PipelineMetadata, StepMetadata
+from analyzer import pipeline_runner
 
 
 # ============================================================================
@@ -41,6 +45,44 @@ class MockLoadCommand(PipelineCommand):
             'Amount': [5.50, 25.00, 120.00, 15.00]
         })
         return CommandResult(return_code=0, data=data)
+
+
+class FakePipeline:
+    """Fake pipeline that returns a DataFrame with sample data."""
+    def run(self):
+        return pd.DataFrame([{'id': 1}])
+
+
+class FakePipelineEmpty:
+    """Fake pipeline that returns an empty DataFrame."""
+    def run(self):
+        return pd.DataFrame()
+
+
+class FakeCommand(PipelineCommand):
+    """Generic fake command for pipeline testing."""
+    def process(self, df: pd.DataFrame, context=None) -> CommandResult:
+        if df is None or df.empty:
+            df = pd.DataFrame([{'id': 1}])
+        return CommandResult(return_code=0, data=df)
+
+
+def create_mock_api_response(category='Food', confidence=0.95):
+    """Create a mock API response for AI categorization.
+    
+    Args:
+        category: The category annotation to return
+        confidence: The confidence score (0-1)
+    
+    Returns:
+        A mock response object with the specified category and confidence
+    """
+    response = MagicMock()
+    response.json.return_value = {
+        'CategoryAnnotation': category,
+        'Confidence': confidence
+    }
+    return response
 
 
 # ============================================================================
@@ -260,6 +302,80 @@ def test_context_files(temp_workspace):
 def metadata_collector():
     """Create a MetadataCollector instance."""
     return MetadataCollector(pipeline_name="test_pipeline")
+
+
+@pytest.fixture
+def temp_dir():
+    """Create a temporary directory for test use."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield tmpdir
+
+
+@pytest.fixture
+def temp_metadata_dir():
+    """Create a temporary directory for metadata storage."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        metadata_dir = Path(tmpdir) / 'metadata'
+        metadata_dir.mkdir(parents=True, exist_ok=True)
+        yield str(metadata_dir)
+
+
+@pytest.fixture
+def mock_pipeline_runner():
+    """Fixture that mocks pipeline_runner module."""
+    with patch('analyzer.pipeline_runner') as mock_runner:
+        # Set up default mock attributes
+        mock_runner.ArgumentParser = argparse.ArgumentParser
+        yield mock_runner
+
+
+@pytest.fixture
+def pipeline_metadata_builder():
+    """Factory fixture for creating PipelineMetadata objects."""
+    def _builder(
+        pipeline_name='test_pipeline',
+        execution_id='test_exec_001',
+        status='success',
+        steps_run=3
+    ):
+        metadata = PipelineMetadata(
+            pipeline_name=pipeline_name,
+            execution_id=execution_id,
+            execution_date=datetime.now(),
+            status=status
+        )
+        # Add steps
+        for i in range(steps_run):
+            step = StepMetadata(
+                step_name=f'step_{i}',
+                status='success',
+                duration_seconds=1.5,
+                rows_processed=100
+            )
+            metadata.steps.append(step)
+        return metadata
+    return _builder
+
+
+@pytest.fixture
+def step_metadata_builder():
+    """Factory fixture for creating StepMetadata objects."""
+    def _builder(
+        step_name='test_step',
+        status='success',
+        duration_seconds=1.5,
+        rows_processed=100,
+        error_message=None
+    ):
+        step = StepMetadata(
+            step_name=step_name,
+            status=status,
+            duration_seconds=duration_seconds,
+            rows_processed=rows_processed,
+            error_message=error_message
+        )
+        return step
+    return _builder
 
 
 # ============================================================================

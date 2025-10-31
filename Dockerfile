@@ -37,11 +37,16 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
+        git \
         iputils-ping \
         netcat-openbsd \
         make \
+        openssh-client \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Configure git to handle SSH key verification and allow git operations
+RUN git config --global --add safe.directory '*'
 
 # Copy installed libs and binaries from builder (builder contains built wheels)
 COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages

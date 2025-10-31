@@ -4,15 +4,12 @@ import logging
 import pytest
 
 from analyzer import pipeline_runner
+from conftest import FakePipeline, FakePipelineEmpty
 
 
 def test_pipeline_runner_main_nonempty(monkeypatch, caplog):
     # Monkeypatch parse_args to supply workflow and log level
     monkeypatch.setattr(pipeline_runner, 'parse_args', lambda: argparse.Namespace(workflow='bank_transaction_analysis', log_level='DEBUG'))
-
-    class FakePipeline:
-        def run(self):
-            return pd.DataFrame([{'a': 1}])
 
     # Mock the workflow registry to return our fake workflow
     monkeypatch.setattr(pipeline_runner, 'WORKFLOW_REGISTRY', {'bank_transaction_analysis': lambda: FakePipeline()})
@@ -25,10 +22,6 @@ def test_pipeline_runner_main_nonempty(monkeypatch, caplog):
 
 def test_pipeline_runner_main_empty(monkeypatch, caplog):
     monkeypatch.setattr(pipeline_runner, 'parse_args', lambda: argparse.Namespace(workflow='bank_transaction_analysis', log_level='DEBUG'))
-
-    class FakePipelineEmpty:
-        def run(self):
-            return pd.DataFrame()
 
     # Mock the workflow registry to return our fake workflow
     monkeypatch.setattr(pipeline_runner, 'WORKFLOW_REGISTRY', {'bank_transaction_analysis': lambda: FakePipelineEmpty()})
