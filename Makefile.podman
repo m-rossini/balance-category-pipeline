@@ -14,11 +14,8 @@ run-dev:
 		--name ${DOCKER_IMAGE_NAME}-dev-balance \
 		--cap-add=NET_RAW \
 		--userns=keep-id \
-		--security-opt label=disable \
 		-v $(shell pwd):/workspace:Z \
-		-v /home/tengelmann/.ssh:/home/tengelmann/.ssh \
-		-v ${SSH_AUTH_SOCK}:/tmp/ssh_agent \
-		-e SSH_AUTH_SOCK=/tmp/ssh_agent \
+		-v /home/tengelmann/.ssh:/home/tengelmann/.ssh:Z \
 		-w /workspace \
 		${DOCKER_IMAGE_NAME}-dev
 
