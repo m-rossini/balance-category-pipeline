@@ -1,5 +1,5 @@
 from analyzer.pipeline.pipeline_commands import (
-    DataPipeline, AppendFilesCommand, CleanDataCommand,
+    DataPipeline, AppendFilesCommand, CleanDataCommand, MergeTrainnedDataCommand,
     AIRemoteCategorizationCommand, QualityAnalysisCommand, SaveFileCommand
 )
 from analyzer.pipeline.quality import SimpleQualityCalculator
@@ -22,7 +22,6 @@ def get_pipeline():
     
     # Mirror the bank transaction analysis pipeline but insert the AI remote
     # categorization step before saving the annotated output.
-    from analyzer.pipeline.pipeline_commands import MergeFilesCommand
 
     return DataPipeline(
         [
@@ -33,7 +32,7 @@ def get_pipeline():
             CleanDataCommand(
                 functions=[bank_extract_clean]
             ),
-            MergeFilesCommand(
+            MergeTrainnedDataCommand(
                 input_file='data/training/factoids.csv',
                 on_columns=['TransactionNumber']
             ),

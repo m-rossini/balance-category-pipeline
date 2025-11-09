@@ -7,14 +7,14 @@ from pathlib import Path
 # Add the src directory to the Python path
 sys.path.append(str(Path(__file__).resolve().parents[1] / 'src'))
 
-from analyzer.pipeline.pipeline_commands import MergeFilesCommand
+from analyzer.pipeline.pipeline_commands import MergeTrainnedDataCommand
 
 def test_merge_files_command_updates_categories_from_training_data(test_csv_files):
-    """Test that MergeFilesCommand correctly merges training data into transaction data."""
+    """Test that MergeTrainnedDataCommand correctly merges training data into transaction data."""
     # Arrange
     data_df = pd.read_csv(test_csv_files['file1'])
     training_df = pd.read_csv(test_csv_files['training'])
-    merge_command = MergeFilesCommand(input_file=test_csv_files['training'], on_columns=['TransactionNumber'])
+    merge_command = MergeTrainnedDataCommand(input_file=test_csv_files['training'], on_columns=['TransactionNumber'])
 
     # Act
     result = merge_command.process(data_df)

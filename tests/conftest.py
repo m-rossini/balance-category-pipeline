@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 from analyzer.pipeline.pipeline_commands import PipelineCommand, CommandResult
 from analyzer.pipeline.metadata import MetadataCollector, PipelineMetadata, StepMetadata
-from analyzer import pipeline_runner
+# from analyzer import pipeline_runner
 
 
 # ============================================================================

@@ -4,7 +4,7 @@ import pandas as pd
 from unittest.mock import patch, MagicMock
 
 from analyzer.workflows import bank_transaction_analysis, ai_categorization, minimal_load
-from analyzer.pipeline.pipeline_commands import MergeFilesCommand, CleanDataCommand, AppendFilesCommand, AIRemoteCategorizationCommand
+from analyzer.pipeline.pipeline_commands import MergeTrainnedDataCommand, CleanDataCommand, AppendFilesCommand, AIRemoteCategorizationCommand
 from conftest import assert_command_result_success, assert_command_result_failure
 
 
@@ -120,8 +120,8 @@ class TestDataPipelineIntegration:
         assert result_df.loc[0, 'TransactionValue'] == -45.00  # From test_transactions_2.csv (sorted reverse)
 
     def test_merge_files_command_missing_df(self):
-        """Test MergeFilesCommand error when df is None and input_file is set."""
-        merge_command = MergeFilesCommand(input_file='dummy.csv')
+        """Test MergeTrainnedDataCommand error when df is None and input_file is set."""
+        merge_command = MergeTrainnedDataCommand(input_file='dummy.csv')
         result = merge_command.process(df=None)
         
         # Assert CommandResult structure for error case
