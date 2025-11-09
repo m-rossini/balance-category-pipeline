@@ -27,7 +27,7 @@ class PipelineCommand(ABC):
         pass
 
 @register_command
-class MergeFilesCommand(PipelineCommand):
+class MergeTrainnedDataCommand(PipelineCommand):
     def __init__(self, input_dir=None, input_file=None, on_columns: Optional[List[str]] = None, file_filter=None, file_glob='*', context: Optional[Dict[str, Any]] = None):
         # Two modes:
         # - append mode: provide input_dir and file_glob to concatenate multiple files
@@ -44,7 +44,7 @@ class MergeFilesCommand(PipelineCommand):
             return CommandResult(return_code=-1, data=None, error={"message": "Missing input DataFrame or input file"})
 
         try:
-            logging.debug(f"[MergeFilesCommand] Merging with {self.input_file} on {self.on_columns}")
+            logging.debug(f"[MergeTrainnedDataCommand] Merging with {self.input_file} on {self.on_columns}")
             other = pd.read_csv(self.input_file, usecols=['TransactionNumber', 'CategoryAnnotation', 'SubCategoryAnnotation', 'Confidence'])
             common = self.on_columns or ['TransactionNumber']
 
@@ -78,7 +78,7 @@ class MergeFilesCommand(PipelineCommand):
                     merged.loc[mask_conf, 'Confidence'] = trained_conf.loc[mask_conf]
                 merged.drop(columns=['Confidence_trained'], inplace=True)
 
-            logging.info(f"[MergeFilesCommand] Merge completed. Resulting rows: {len(merged)}")
+            logging.info(f"[MergeTrainnedDataCommand] Merge completed. Resulting rows: {len(merged)}")
             return CommandResult(return_code=0, data=merged)
         except Exception as e:
             return CommandResult(return_code=-1, data=None, error={"message": str(e)})

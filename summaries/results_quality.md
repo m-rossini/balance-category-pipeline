@@ -1,25 +1,83 @@
-# Results Quality
-This feature objective is to measure the quality of categorization made in previous steps
+# Results Quality Assessment
 
-## Inputs
-The data categorized. It will receive the whole data frame and will use the columns Category, Subcategory and confidence to calculate a quality index.
+This feature measures the quality of AI categorization results across three dimensions: completeness, confidence, and consistency.
+
+## Architecture
+
+The quality assessment system uses a composable, pluggable architecture:
+
+### Quality Dimensions
+
+#### 1. Completeness Calculator
+- **Purpose**: Measures field presence and population
+- **Required Fields**: `CategoryAnnotation`, `SubCategoryAnnotation`, `Confidence`
+- **Calculation**: Fraction of required fields present and non-empty per row, averaged across all rows
+- **Range**: 0.0 (no fields present) to 1.0 (all fields complete)
+
+#### 2. Confidence Calculator
+- **Purpose**: Measures AI categorization reliability
+- **Input**: `Confidence` column values
+- **Calculation**: Weighted average where low confidence scores have higher impact
+- **Weighting**:
+  - Scores < 0.70: Weight = 3 (highest impact on lowering index)
+  - Scores 0.71-0.90: Weight = 2 (medium impact)
+  - Scores > 0.90: Weight = 1 (lowest impact)
+- **Range**: 0.0 (no valid confidence) to 1.0 (all high confidence)
+
+#### 3. Consistency Calculator
+- **Purpose**: Measures categorization consistency within similar transactions
+- **Input**: `TransactionDescription`, `CategoryAnnotation`, `SubCategoryAnnotation`
+- **Calculation**: Groups transactions by description prefix, measures fraction of groups with uniform categorization
+- **Range**: 0.0 (no consistency) to 1.0 (perfect consistency within groups)
+
+### Overall Quality Index
+- **Formula**: `(completeness × 0.3) + (confidence × 0.5) + (consistency × 0.2)`
+- **Purpose**: Weighted combination of all three dimensions
+- **Default Weights**: Completeness (30%), Confidence (50%), Consistency (20%)
+
+## Implementation
+
+### Pluggable Architecture
+- `QualityDimensionCalculator` abstract interface for individual dimensions
+- `QualityCalculator` abstract interface for complete quality assessment
+- `DefaultQualityCalculator` composes all three dimensions via dependency injection
+- `SimpleQualityCalculator` provides legacy confidence-only calculation
+
+### Configuration
+Quality calculators are pluggable and configurable:
+```python
+# Use default calculators
+calculator = DefaultQualityCalculator()
+
+# Use custom calculators with different weights
+calculator = DefaultQualityCalculator(
+    completeness_calculator=MyCompletenessCalculator(),
+    confidence_calculator=MyConfidenceCalculator(),
+    consistency_calculator=MyConsistencyCalculator(),
+    completeness_weight=0.4,
+    confidence_weight=0.4,
+    consistency_weight=0.2
+)
+```
+
+## Integration
+
+### Command Result
+- Quality metrics are returned in `CommandResult.metadata` parameter
+- Includes all three dimension scores plus overall quality index
+- Calculator name is also stored in metadata
+
+### Pipeline Integration
+- `DataPipeline` reads quality metrics after each step
+- Updates final pipeline metadata with quality assessment
+- Quality metrics are persisted with pipeline execution history
 
 ## Outputs
-The outputs will be in the form of CommandResult class where the data frame is the same from the input
-It will create the score into the metadata parameter.
 
-## Calculation
-The calculation will be an average of each row confidence value. Confidence value per row is a range from zero (No confidence) to 1 (Full confidence).
+The quality assessment produces:
+- **Completeness Score**: Field population quality (0.0-1.0)
+- **Confidence Score**: AI reliability assessment (0.0-1.0)
+- **Consistency Score**: Categorization uniformity (0.0-1.0)
+- **Overall Quality Index**: Weighted combination (0.0-1.0)
 
-For each row, if any of category, subcategory or confidence is missing the value for that row is zero.
-If confidence is zero, regardless of anything else the confidence is zero.
-
-Numbers below 0.70 have more weight in bringing the index down, anything between 0.71 and 0.9 is second weight and over 0.9 has a lesser weight. This is to highlight the need for a higher confidence overall. If there is any other strategy to it, let me know and ask for clarifications.
-
-## Implementations
-The calculator should be pluggable and defined in configuration. I can decide to change how to calculate it at any time.
-
-## Interactions
-The metadata will be updated with the quality index via metadata paramter in the command result.
-The metadata will be updated with the name of the calculator via metadata parameter.
-The DataPipeline class should read metadata info after each step, update the final metadata with the ones from the command result
+All metrics are stored in pipeline metadata for historical analysis and quality monitoring.

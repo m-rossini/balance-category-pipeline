@@ -1,6 +1,6 @@
 from analyzer.pipeline.pipeline_commands import (
     DataPipeline, AppendFilesCommand, CleanDataCommand,
-    MergeFilesCommand, SaveFileCommand
+    MergeTrainnedDataCommand, SaveFileCommand
 )
 from analyzer.workflows.bank_extract_clean import bank_extract_clean
 
@@ -19,7 +19,7 @@ def get_pipeline():
             CleanDataCommand(
                 functions=[bank_extract_clean]
             ),
-            MergeFilesCommand(
+            MergeTrainnedDataCommand(
                 input_file='data/training/factoids.csv',
                 on_columns=['TransactionNumber']
             ),

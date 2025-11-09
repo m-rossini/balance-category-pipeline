@@ -1,7 +1,7 @@
 """TDD: Tests for CompletenessCalculator - Phase 1."""
 import pytest
 import pandas as pd
-from analyzer.pipeline.quality_completeness import CompletenessCalculator
+from analyzer.pipeline.quality import CompletenessCalculator
 
 
 def test_completeness_all_fields_present():
@@ -9,7 +9,7 @@ def test_completeness_all_fields_present():
     df = pd.DataFrame({
         'CategoryAnnotation': ['Food', 'Transport'],
         'SubCategoryAnnotation': ['Coffee', 'Bus'],
-        'Description': ['Breakfast', 'Morning commute']
+        'Confidence': [0.9, 0.8]
     })
     
     calculator = CompletenessCalculator()
