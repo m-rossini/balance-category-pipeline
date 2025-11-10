@@ -1,5 +1,5 @@
 from analyzer.pipeline.pipeline_commands import (
-    DataPipeline, AppendFilesCommand, CleanDataCommand,
+    DataPipeline, AppendFilesCommand, ApplyFunctionsCommand,
     MergeTrainnedDataCommand, SaveFileCommand
 )
 from analyzer.workflows.bank_extract_clean import bank_extract_clean
@@ -16,7 +16,7 @@ def get_pipeline():
                 input_dir='data/extratos/bank_bos',
                 file_glob='*.csv'
             ),
-            CleanDataCommand(
+            ApplyFunctionsCommand(
                 functions=[bank_extract_clean]
             ),
             MergeTrainnedDataCommand(

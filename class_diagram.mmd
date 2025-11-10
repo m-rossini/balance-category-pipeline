@@ -6,7 +6,7 @@ classDiagram
     class AppendFilesCommand {
         +process(df)
     }
-    class CleanDataCommand {
+    class ApplyFunctionsCommand {
         +process(df)
     }
     class SaveFileCommand {
@@ -30,7 +30,7 @@ classDiagram
         -params
     }
     PipelineCommand <|-- AppendFilesCommand
-    PipelineCommand <|-- CleanDataCommand
+    PipelineCommand <|-- ApplyFunctionsCommand
     PipelineCommand <|-- SaveFileCommand
     PipelineCommand <|-- FactoidIngestionCommand
     PipelineCommand <|-- ModelTrainingCommand

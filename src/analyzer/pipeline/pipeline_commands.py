@@ -84,20 +84,20 @@ class MergeTrainnedDataCommand(PipelineCommand):
             return CommandResult(return_code=-1, data=None, error={"message": str(e)})
 
 @register_command
-class CleanDataCommand(PipelineCommand):
+class ApplyFunctionsCommand(PipelineCommand):
     def __init__(self, functions=None, context: Optional[Dict[str, Any]] = None):
         # accept context for compatibility with workflows
         self.context = context or {}
-        self.functions = functions or [CleanDataCommand.default_clean]
+        self.functions = functions or [ApplyFunctionsCommand.default_clean]
     
     def process(self, df: pd.DataFrame, context: Optional[Dict[str, Any]] = None) -> CommandResult:
-        logging.debug(f"[CleanDataCommand] Starting cleaning. Input shape: {df.shape}")
+        logging.debug(f"[ApplyFunctionsCommand] Starting cleaning. Input shape: {df.shape}")
         if df.empty:
             logging.warning("No data to clean.")
             return CommandResult(return_code=0, data=df)
         for fn in self.functions:
             df = fn(df)
-        logging.debug(f"[CleanDataCommand] Cleaned DataFrame shape: {df.shape}")
+        logging.debug(f"[ApplyFunctionsCommand] Cleaned DataFrame shape: {df.shape}")
         logging.info(f"Cleaned data: {len(df)} rows remain after cleaning.")
         return CommandResult(return_code=0, data=df)
     

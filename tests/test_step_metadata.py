@@ -10,7 +10,7 @@ def test_step_metadata_with_timestamps():
     end_time = datetime(2025, 10, 26, 10, 0, 1, 230000)  # 1.23 seconds later
     
     metadata = StepMetadata(
-        name="CleanDataCommand",
+        name="ApplyFunctionsCommand",
         input_rows=100,
         output_rows=95,
         start_time=start_time,

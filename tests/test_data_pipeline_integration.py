@@ -4,7 +4,7 @@ import pandas as pd
 from unittest.mock import patch, MagicMock
 
 from analyzer.workflows import bank_transaction_analysis, ai_categorization, minimal_load
-from analyzer.pipeline.pipeline_commands import MergeTrainnedDataCommand, CleanDataCommand, AppendFilesCommand, AIRemoteCategorizationCommand
+from analyzer.pipeline.pipeline_commands import MergeTrainnedDataCommand, ApplyFunctionsCommand, AppendFilesCommand, AIRemoteCategorizationCommand
 from conftest import assert_command_result_success, assert_command_result_failure
 
 
@@ -130,9 +130,9 @@ class TestDataPipelineIntegration:
         assert result.error is not None, f"Expected error dict, got {result.error}"
 
     def test_clean_data_command_default_clean(self):
-        """Test CleanDataCommand uses default_clean when no functions provided."""
+        """Test ApplyFunctionsCommand uses default_clean when no functions provided."""
         df = pd.DataFrame({'col1': [1, 2], 'col2': ['a', 'b']})
-        clean_command = CleanDataCommand(functions=None)
+        clean_command = ApplyFunctionsCommand(functions=None)
         result = clean_command.process(df)
         
         # Assert CommandResult structure
