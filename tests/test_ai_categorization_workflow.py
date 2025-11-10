@@ -10,7 +10,7 @@ def test_ai_categorization_workflow_definition():
 def test_ai_categorization_pipeline_commands():
     """Test that the ai_categorization pipeline includes the expected commands in the correct order."""
     from analyzer.pipeline.pipeline_commands import (
-        AppendFilesCommand, CleanDataCommand, MergeTrainnedDataCommand, AIRemoteCategorizationCommand, QualityAnalysisCommand, SaveFileCommand
+        AppendFilesCommand, ApplyFunctionsCommand, MergeTrainnedDataCommand, AIRemoteCategorizationCommand, QualityAnalysisCommand, SaveFileCommand
     )
     
     pipeline = get_pipeline()
@@ -18,7 +18,7 @@ def test_ai_categorization_pipeline_commands():
 
     assert len(commands) == 6, "The pipeline should have exactly 6 commands."
     assert isinstance(commands[0], AppendFilesCommand), "The first command should be AppendFilesCommand."
-    assert isinstance(commands[1], CleanDataCommand), "The second command should be CleanDataCommand."
+    assert isinstance(commands[1], ApplyFunctionsCommand), "The second command should be ApplyFunctionsCommand."
     assert isinstance(commands[2], MergeTrainnedDataCommand), "The third command should be MergeTrainnedDataCommand."
     assert isinstance(commands[3], AIRemoteCategorizationCommand), "The fourth command should be AIRemoteCategorizationCommand."
     assert isinstance(commands[4], QualityAnalysisCommand), "The fifth command should be QualityAnalysisCommand."

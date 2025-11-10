@@ -4,7 +4,7 @@ flowchart TD
     C --> D[Add to DataPipeline]
     D --> E[Run DataPipeline]
     E --> F[Run AppendFilesCommand]
-    F --> G[Run CleanDataCommand]
+    F --> G[Run ApplyFunctionsCommand]
     G --> H[Run SaveFileCommand]
     H --> I[Optional: FactoidIngestionCommand]
     I --> J[Optional: ModelTrainingCommand]

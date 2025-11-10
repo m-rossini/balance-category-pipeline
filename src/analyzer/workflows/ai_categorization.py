@@ -1,9 +1,10 @@
 from analyzer.pipeline.pipeline_commands import (
-    DataPipeline, AppendFilesCommand, CleanDataCommand, MergeTrainnedDataCommand,
+    DataPipeline, AppendFilesCommand, ApplyFunctionsCommand, MergeTrainnedDataCommand,
     AIRemoteCategorizationCommand, QualityAnalysisCommand, SaveFileCommand
 )
 from analyzer.pipeline.quality import SimpleQualityCalculator
 from analyzer.workflows.bank_extract_clean import bank_extract_clean
+from analyzer.workflows.derive_statement_features import derive_statement_features
 import os
 
 def get_pipeline():
@@ -29,8 +30,8 @@ def get_pipeline():
                 input_dir='data/extratos/demo/',
                 file_glob='*.csv'
             ),
-            CleanDataCommand(
-                functions=[bank_extract_clean]
+            ApplyFunctionsCommand(
+                functions=[bank_extract_clean, derive_statement_features]
             ),
             MergeTrainnedDataCommand(
                 input_file='data/training/factoids.csv',
