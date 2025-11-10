@@ -40,7 +40,7 @@ def get_pipeline():
             AIRemoteCategorizationCommand(
                 service_url=service_url,
                 method="POST",
-                headers={"Authorization": os.getenv('AI_SERVICE_API_KEY', '')},
+                headers={},
                 data={"transactions": []}  # Will be populated with transaction data
             ),
             QualityAnalysisCommand(calculator=SimpleQualityCalculator()),
