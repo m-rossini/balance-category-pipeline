@@ -502,10 +502,17 @@ class QualityAnalysisCommand(PipelineCommand):
             - metadata_updates: dict with 'quality_index' and 'calculator_name'
         """
         try:
-            # Calculate quality metrics
+            # Add consolidated logging for performance debugging
+            start_time = time.time()
             if df is not None:
+                logging.info(f"[QualityAnalysisCommand] Starting quality analysis: {len(df)} rows, {len(df.columns)} columns, calculator={self.calculator.__class__.__name__}")
+                
                 metrics = self.calculator.calculate(df)
+                
+                elapsed = time.time() - start_time
+                logging.info(f"[QualityAnalysisCommand] Quality analysis completed in {elapsed:.4f}s, quality_index={metrics.overall_quality_index:.4f}")
             else:
+                logging.error("[QualityAnalysisCommand] No DataFrame provided")
                 return CommandResult(return_code=-1, data=None, error={"message": "No DataFrame provided"}, metadata_updates=None)
 
             # Build metadata updates with overall_quality_index

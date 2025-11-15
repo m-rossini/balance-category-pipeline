@@ -52,26 +52,30 @@ def derive_statement_features(df: pd.DataFrame) -> pd.DataFrame:
     df["Semester"] = ((df["TransactionDate"].dt.month - 1) // 6) + 1
     df["IsWeekend"] = df["TransactionDate"].dt.dayofweek >= 5
 
-    df_temp = df.copy()
-    df_ascending = df_temp.sort_values("TransactionDate", ascending=True)
+    # Running calculations (overall chronological by TransactionNumber)
+    # TransactionNumber 1 is earliest, higher numbers are later
+    df_temp = df.copy().reset_index(drop=True)
+    df_temp['original_index'] = df_temp.index
+    df_ascending = df_temp.sort_values("TransactionNumber", ascending=True)  # Sort by TransactionNumber, not date
     df_ascending["RunningSum"] = df_ascending["TransactionValue"].cumsum()
     df_ascending["RunningCount"] = range(1, len(df_ascending) + 1)
     df_ascending["RunningAverage"] = (
         df_ascending["RunningSum"] / df_ascending["RunningCount"]
     )
 
-    # Map running calculations back to original order using TransactionDate as key
-    running_overall = df_ascending.set_index("TransactionDate")[
-        ["RunningSum", "RunningCount", "RunningAverage"]
-    ]
-    df = df.merge(
-        running_overall, left_on="TransactionDate", right_index=True, how="left"
-    )
+    # Create a mapping from original index to running values
+    running_map = df_ascending.set_index('original_index')[['RunningSum', 'RunningCount', 'RunningAverage']]
+    
+    # Assign running calculations back to original DataFrame in original order
+    df["RunningSum"] = df.index.map(running_map['RunningSum'])
+    df["RunningCount"] = df.index.map(running_map['RunningCount'])
+    df["RunningAverage"] = df.index.map(running_map['RunningAverage'])
 
-    # Running calculations per year (chronological within each year)
-    df_year_temp = df.copy()
+    # Running calculations per year (chronological by TransactionNumber within each year)
+    df_year_temp = df.copy().reset_index(drop=True)
+    df_year_temp['original_index'] = df_year_temp.index
     df_year_ascending = df_year_temp.sort_values(
-        ["Year", "TransactionDate"], ascending=[True, True]
+        ["Year", "TransactionNumber"], ascending=[True, True]  # Sort by TransactionNumber within year
     )
     df_year_ascending["RunningSumYear"] = df_year_ascending.groupby("Year")[
         "TransactionValue"
@@ -83,18 +87,19 @@ def derive_statement_features(df: pd.DataFrame) -> pd.DataFrame:
         df_year_ascending["RunningSumYear"] / df_year_ascending["RunningCountYear"]
     )
 
-    # Map yearly running calculations back
-    running_yearly = df_year_ascending.set_index("TransactionDate")[
-        ["RunningSumYear", "RunningCountYear", "RunningAverageYear"]
-    ]
-    df = df.merge(
-        running_yearly, left_on="TransactionDate", right_index=True, how="left"
-    )
+    # Create mapping from original index to yearly running values
+    yearly_running_map = df_year_ascending.set_index('original_index')[['RunningSumYear', 'RunningCountYear', 'RunningAverageYear']]
+    
+    # Assign yearly running calculations back to original DataFrame
+    df["RunningSumYear"] = df.index.map(yearly_running_map['RunningSumYear'])
+    df["RunningCountYear"] = df.index.map(yearly_running_map['RunningCountYear'])
+    df["RunningAverageYear"] = df.index.map(yearly_running_map['RunningAverageYear'])
 
-    # Running calculations per month (chronological within each month)
-    df_month_temp = df.copy()
+    # Running calculations per month (chronological by TransactionNumber within each month)
+    df_month_temp = df.copy().reset_index(drop=True)
+    df_month_temp['original_index'] = df_month_temp.index
     df_month_ascending = df_month_temp.sort_values(
-        ["Year", "Month", "TransactionDate"], ascending=[True, True, True]
+        ["Year", "Month", "TransactionNumber"], ascending=[True, True, True]  # Sort by TransactionNumber within month
     )
     df_month_ascending["RunningSumMonth"] = df_month_ascending.groupby(
         ["Year", "Month"]
@@ -106,13 +111,13 @@ def derive_statement_features(df: pd.DataFrame) -> pd.DataFrame:
         df_month_ascending["RunningSumMonth"] / df_month_ascending["RunningCountMonth"]
     )
 
-    # Map monthly running calculations back
-    running_monthly = df_month_ascending.set_index("TransactionDate")[
-        ["RunningSumMonth", "RunningCountMonth", "RunningAverageMonth"]
-    ]
-    df = df.merge(
-        running_monthly, left_on="TransactionDate", right_index=True, how="left"
-    )
+    # Create mapping from original index to monthly running values
+    monthly_running_map = df_month_ascending.set_index('original_index')[['RunningSumMonth', 'RunningCountMonth', 'RunningAverageMonth']]
+    
+    # Assign monthly running calculations back to original DataFrame
+    df["RunningSumMonth"] = df.index.map(monthly_running_map['RunningSumMonth'])
+    df["RunningCountMonth"] = df.index.map(monthly_running_map['RunningCountMonth'])
+    df["RunningAverageMonth"] = df.index.map(monthly_running_map['RunningAverageMonth'])
     # Value binning
     bins = [0, 10, 50, 150, 500, 1500, 999999]
     labels = ["0-10", "10.01-50", "50.01-150", "150.01-500", "500.01-1500", "1500+"]

@@ -65,10 +65,7 @@ def bank_extract_clean(df: pd.DataFrame) -> pd.DataFrame:
             credit_series = pd.Series([credit_series] * len(df), index=df.index)
         if not hasattr(debit_series, "fillna"):
             debit_series = pd.Series([debit_series] * len(df), index=df.index)
-        df["TransactionValue"] = pd.to_numeric(credit_series, errors="coerce").fillna(
-            0
-        ) - pd.to_numeric(debit_series, errors="coerce").fillna(0)
-    # Add annotation column if missing
+        df["TransactionValue"] = pd.to_numeric(credit_series, errors="coerce").fillna(0) - pd.to_numeric(debit_series, errors="coerce").fillna(0)    # Add annotation column if missing
     if "CategoryAnnotation" not in df.columns:
         df["CategoryAnnotation"] = ""
     if "SubCategoryAnnotation" not in df.columns:

@@ -6,6 +6,7 @@ applyTo: '**'
     * Make sure you are aware of previous decisions and design that are located under summaries
     * Understand the design based on that summaries
     * Note that sometimes a summary might not be there due to any reason since forgetting to create or even losing it
+    * When asked about what is going on or opinions DO NOT CHANGE CODE, unless explicitely said
 
 * For Operations mode:
     * When generating code, please go step by step, make one change at a time
@@ -26,7 +27,7 @@ applyTo: '**'
 * For Coding:
     * TRY TO KEEP LOGGING STATEMENTS INTO A single LINE
     * Add type hints and maintain them updated
-    * Imports ALWAYS goes to the top of the file
+    * Imports ALWAYS goes to the top of the file, NEVER do LOCAL Import
     * Start with test that fails and move from ther in TDD fashion
     * use extreme programming paradigm when coding and consider myself as your senior peer/counterpart
     * Ask me to review and approve what you created as your extreme programmer peer

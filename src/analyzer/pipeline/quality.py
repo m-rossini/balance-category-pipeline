@@ -1,10 +1,11 @@
 """Quality metrics calculation and tracking."""
+import pandas as pd
+import logging
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-import pandas as pd
 
 
 @dataclass
@@ -28,7 +29,6 @@ class QualityMetrics:
 
 class QualityDimensionCalculator(ABC):
     """Abstract interface for individual quality dimension calculators."""
-
     @abstractmethod
     def calculate(self, df: pd.DataFrame) -> float:
         """Calculate quality score for this dimension.
@@ -44,7 +44,6 @@ class QualityDimensionCalculator(ABC):
 
 class CompletenessCalculator(QualityDimensionCalculator):
     """Calculates completeness quality dimension based on field presence."""
-
     def calculate(self, df: pd.DataFrame) -> float:
         """Calculate completeness score for the dataframe."""
         if df.empty:
@@ -94,7 +93,6 @@ class ConfidenceCalculator(QualityDimensionCalculator):
     - Confidence values 0.71-0.90 have medium weight
     - Confidence values > 0.90 have lowest weight (highest quality)
     """
-
     def calculate(self, df: pd.DataFrame) -> float:
         """Calculate confidence score for DataFrame.
 
@@ -182,7 +180,6 @@ class ConsistencyCalculator(QualityDimensionCalculator):
     - Calculate consistency as fraction of groups with uniform categorization
     - Penalize groups with mixed categorizations
     """
-
     def calculate(self, df: pd.DataFrame) -> float:
         """Calculate consistency score for DataFrame.
 
@@ -210,9 +207,7 @@ class ConsistencyCalculator(QualityDimensionCalculator):
 
         return consistent_groups / total_groups if total_groups > 0 else 0.0
 
-    def _group_by_description_prefix(
-        self, df: pd.DataFrame, prefix_length: int = 12
-    ) -> Dict[str, pd.DataFrame]:
+    def _group_by_description_prefix(self, df: pd.DataFrame, prefix_length: int = 12) -> Dict[str, pd.DataFrame]:
         """Group transactions by description prefix.
 
         Args:
@@ -236,11 +231,7 @@ class ConsistencyCalculator(QualityDimensionCalculator):
             groups[prefix].append(row)
 
         # Convert lists to DataFrames
-        return {
-            prefix: pd.DataFrame(rows)
-            for prefix, rows in groups.items()
-            if len(rows) > 1
-        }
+        return {prefix: pd.DataFrame(rows) for prefix, rows in groups.items() if len(rows) > 1}
 
     def _is_group_consistent(self, group_df: pd.DataFrame) -> bool:
         """Check if a group has consistent categorizations.
@@ -272,7 +263,6 @@ class ConsistencyCalculator(QualityDimensionCalculator):
 
 class QualityCalculator(ABC):
     """Abstract interface for pluggable quality calculation strategies."""
-
     @abstractmethod
     def calculate(self, df: pd.DataFrame) -> QualityMetrics:
         """Calculate quality metrics for DataFrame.
@@ -292,7 +282,6 @@ class DefaultQualityCalculator(QualityCalculator):
     Uses configurable dimension calculators to compute completeness, confidence,
     and consistency scores, then combines them into an overall quality index.
     """
-
     def __init__(
         self,
         completeness_calculator: Optional[QualityDimensionCalculator] = None,
@@ -312,18 +301,14 @@ class DefaultQualityCalculator(QualityCalculator):
             confidence_weight: Weight for confidence in overall index (default 0.5)
             consistency_weight: Weight for consistency in overall index (default 0.2)
         """
-        self.completeness_calculator = (
-            completeness_calculator or CompletenessCalculator()
-        )
+        self.completeness_calculator = completeness_calculator or CompletenessCalculator()
         self.confidence_calculator = confidence_calculator or ConfidenceCalculator()
         self.consistency_calculator = consistency_calculator or ConsistencyCalculator()
 
         # Validate weights sum to 1.0
         total_weight = completeness_weight + confidence_weight + consistency_weight
         if abs(total_weight - 1.0) > 0.001:
-            raise ValueError(
-                f"Quality dimension weights must sum to 1.0, got {total_weight}"
-            )
+            raise ValueError(f"Quality dimension weights must sum to 1.0, got {total_weight}")
 
         self.completeness_weight = completeness_weight
         self.confidence_weight = confidence_weight
@@ -345,11 +330,8 @@ class DefaultQualityCalculator(QualityCalculator):
         consistency = self.consistency_calculator.calculate(df)
 
         # Calculate overall quality index as weighted average
-        overall_quality_index = (
-            completeness * self.completeness_weight
-            + confidence * self.confidence_weight
-            + consistency * self.consistency_weight
-        )
+        overall_quality_index = (completeness * self.completeness_weight + confidence * self.confidence_weight +
+                                 consistency * self.consistency_weight)
 
         return QualityMetrics(
             completeness=completeness,
@@ -369,10 +351,10 @@ class SimpleQualityCalculator(QualityCalculator):
     - Confidence values 0.71-0.90 have second weight
     - Confidence values > 0.90 have lesser weight
     """
-
     def calculate(self, df: pd.DataFrame) -> QualityMetrics:
         """Calculate simple quality index based only on confidence scores."""
         if df.empty:
+            logging.debug("[SimpleQualityCalculator] Empty DataFrame, returning zero metrics")
             return QualityMetrics(
                 completeness=0.0,
                 confidence=0.0,
@@ -380,13 +362,18 @@ class SimpleQualityCalculator(QualityCalculator):
                 overall_quality_index=0.0,
             )
 
+        logging.info(f"[SimpleQualityCalculator] Processing {len(df)} rows with iterrows()...")
+        
         # Calculate row-level scores
         row_scores = []
+        row_count = 0
         for idx, row in df.iterrows():
             row_score = self._calculate_row_confidence_score(row)
             row_scores.append(row_score)
-
+            row_count += 1
+            
         if not row_scores:
+            logging.warning("[SimpleQualityCalculator] No valid row scores found")
             return QualityMetrics(
                 completeness=0.0,
                 confidence=0.0,
@@ -396,6 +383,8 @@ class SimpleQualityCalculator(QualityCalculator):
 
         # Apply weighted average calculation
         quality_index = self._apply_confidence_weighting(row_scores)
+        
+        logging.info(f"[SimpleQualityCalculator] Completed with quality_index={quality_index:.4f}")
 
         return QualityMetrics(
             completeness=0.0,  # Not calculated in simple version
@@ -407,11 +396,7 @@ class SimpleQualityCalculator(QualityCalculator):
     def _calculate_row_confidence_score(self, row: pd.Series) -> float:
         """Calculate score for a single row. Returns 0 if any field missing or confidence is 0."""
         # Check for missing values
-        if (
-            pd.isna(row.get("CategoryAnnotation"))
-            or pd.isna(row.get("SubCategoryAnnotation"))
-            or pd.isna(row.get("Confidence"))
-        ):
+        if (pd.isna(row.get("CategoryAnnotation")) or pd.isna(row.get("SubCategoryAnnotation")) or pd.isna(row.get("Confidence"))):
             return 0.0
 
         # Check if category or subcategory are empty strings (whitespace)

@@ -243,3 +243,90 @@ def test_derive_statement_features_single_row():
 
     # Contract: TransactionValue binning works
     assert result.loc[0, 'TransactionValueBin'] == '50.01-150'
+
+
+def test_derive_statement_features_preserves_row_count():
+    """Test that derive_statement_features NEVER changes row count (critical data integrity test)."""
+    # Test with various sizes to catch data explosion bugs
+    test_cases = [
+        # Empty DataFrame
+        pd.DataFrame(columns=['TransactionDate', 'TransactionValue']),
+        
+        # Single row
+        pd.DataFrame([{'TransactionDate': '25/01/2023', 'TransactionValue': 100.0}]),
+        
+        # Multiple transactions on same date (the bug trigger!)
+        pd.DataFrame([
+            {'TransactionDate': '25/01/2023', 'TransactionValue': 100.0, 'TransactionNumber': 1},
+            {'TransactionDate': '25/01/2023', 'TransactionValue': 200.0, 'TransactionNumber': 2}, 
+            {'TransactionDate': '25/01/2023', 'TransactionValue': 300.0, 'TransactionNumber': 3},
+        ]),
+        
+        # Larger dataset with many duplicates
+        pd.DataFrame([
+            {'TransactionDate': '01/01/2023', 'TransactionValue': i * 10.0, 'TransactionNumber': i}
+            for i in range(1, 21)  # 20 rows, some will have same date
+        ] + [
+            {'TransactionDate': '01/01/2023', 'TransactionValue': i * 15.0, 'TransactionNumber': i + 20}  
+            for i in range(1, 11)  # 10 more rows with duplicate dates
+        ])
+    ]
+    
+    for i, test_df in enumerate(test_cases):
+        print(f"\nTesting case {i + 1}: {len(test_df)} input rows")
+        if not test_df.empty:
+            print(f"Date distribution: {test_df['TransactionDate'].value_counts().to_dict()}")
+        
+        result_df = derive_statement_features(test_df)
+        
+        # CRITICAL TEST: Input rows must equal output rows
+        assert len(test_df) == len(result_df), f"Case {i + 1}: Row count changed! Input={len(test_df)}, Output={len(result_df)}"
+        
+        # Verify no data explosion occurred
+        if len(test_df) > 0:
+            explosion_ratio = len(result_df) / len(test_df)
+            assert explosion_ratio == 1.0, f"Case {i + 1}: Data explosion detected! Ratio={explosion_ratio}"
+            
+        print(f"✅ Case {i + 1} passed: {len(test_df)} → {len(result_df)} rows")
+
+
+def test_derive_statement_features_duplicate_dates_realistic():
+    """Test with realistic production data scenario: multiple transactions per day."""
+    # This mirrors the actual bug scenario from perez_5000_balance__bos.csv
+    data = [
+        {'TransactionDate': '25/01/2023', 'TransactionValue': 100.0, 'TransactionNumber': 11},  # Latest
+        {'TransactionDate': '25/01/2023', 'TransactionValue': 200.0, 'TransactionNumber': 10},
+        {'TransactionDate': '25/01/2023', 'TransactionValue': 150.0, 'TransactionNumber': 9}, 
+        {'TransactionDate': '24/01/2023', 'TransactionValue': 300.0, 'TransactionNumber': 8},
+        {'TransactionDate': '24/01/2023', 'TransactionValue': 250.0, 'TransactionNumber': 7},
+        {'TransactionDate': '23/01/2023', 'TransactionValue': 75.0, 'TransactionNumber': 6},
+        {'TransactionDate': '23/01/2023', 'TransactionValue': 125.0, 'TransactionNumber': 5}, 
+        {'TransactionDate': '23/01/2023', 'TransactionValue': 90.0, 'TransactionNumber': 4},
+        {'TransactionDate': '22/01/2023', 'TransactionValue': 180.0, 'TransactionNumber': 3},
+        {'TransactionDate': '21/01/2023', 'TransactionValue': 220.0, 'TransactionNumber': 2},
+        {'TransactionDate': '20/01/2023', 'TransactionValue': 110.0, 'TransactionNumber': 1},  # Oldest
+    ]
+    
+    input_df = pd.DataFrame(data)
+    print(f"Input: {len(input_df)} rows with duplicate dates")
+    print(f"Date distribution: {input_df['TransactionDate'].value_counts().to_dict()}")
+    
+    result_df = derive_statement_features(input_df)
+    
+    # CRITICAL: No row explosion  
+    assert len(input_df) == len(result_df), f"Row explosion! {len(input_df)} → {len(result_df)}"
+    
+    # Verify TransactionNumber order preserved (critical for running calculations)
+    input_txn_order = input_df['TransactionNumber'].tolist()
+    result_txn_order = result_df['TransactionNumber'].tolist()
+    assert input_txn_order == result_txn_order, "TransactionNumber order not preserved!"
+    
+    # Verify running calculations respect TransactionNumber chronological order
+    # TransactionNumber 1 should have RunningCount=1, 2 should have RunningCount=2, etc.
+    for idx, row in result_df.iterrows():
+        expected_running_count = row['TransactionNumber']
+        actual_running_count = row['RunningCount']
+        assert expected_running_count == actual_running_count, \
+            f"Running calculation wrong: TxnNum={row['TransactionNumber']}, RunningCount={actual_running_count}"
+    
+    print(f"✅ All checks passed: {len(result_df)} rows, order preserved, calculations correct")
