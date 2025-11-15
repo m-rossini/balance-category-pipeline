@@ -87,12 +87,12 @@ class MergeTrainnedDataCommand(PipelineCommand):
 
             # Prepare numeric confidence series for comparison (trained and original)
             trained_conf = (
-                pd.to_numeric(merged.get("Confidence_trained"), errors="coerce")
+                pd.to_numeric(merged["Confidence_trained"], errors="coerce")
                 if "Confidence_trained" in merged.columns
                 else pd.Series([float("nan")] * len(merged), index=merged.index)
             )
             orig_conf = (
-                pd.to_numeric(merged.get("Confidence"), errors="coerce")
+                pd.to_numeric(merged["Confidence"], errors="coerce")
                 if "Confidence" in merged.columns
                 else pd.Series([float("nan")] * len(merged), index=merged.index)
             )
@@ -146,9 +146,6 @@ class ApplyFunctionsCommand(PipelineCommand):
     def process(
         self, df: Optional[pd.DataFrame], context: Optional[Dict[str, Any]] = None
     ) -> CommandResult:
-        logging.debug(
-            f"[ApplyFunctionsCommand] Starting cleaning. Input shape: {df.shape}"
-        )
         if df is None or df.empty:
             logging.warning("No data to clean.")
             return CommandResult(return_code=0, data=df)
@@ -270,10 +267,10 @@ class SaveFileCommand(PipelineCommand):
         self.context = context or {}
 
     def process(
-        self, df: pd.DataFrame, context: Optional[Dict[str, Any]] = None
+        self, df: pd.DataFrame | None, context: Optional[Dict[str, Any]] = None
     ) -> CommandResult:
         try:
-            if df.empty and not self.save_empty:
+            if df is None or (df.empty and not self.save_empty):
                 return CommandResult(return_code=0, data=df)
             self.output_path.parent.mkdir(parents=True, exist_ok=True)
             df.to_csv(str(self.output_path), index=False)
@@ -316,13 +313,13 @@ class AIRemoteCategorizationCommand(PipelineCommand):
         self.impl = impl
 
     def process(
-        self, df: pd.DataFrame, context: Optional[Dict[str, Any]] = None
+        self, df: pd.DataFrame | None, context: Optional[Dict[str, Any]] = None
     ) -> CommandResult:
         """Process DataFrame by calling remote categorization API in batches."""
         logging.info(
-            f"[AIRemoteCategorizationCommand] Processing {len(df)} records in batches of {self.batch_size}"
+            f"[AIRemoteCategorizationCommand] Processing {len(df if df is not None else [])} records in batches of {self.batch_size}"
         )
-        if len(df) == 0:
+        if df is None or len(df) == 0:
             return CommandResult(return_code=0, data=df)
 
         try:
@@ -438,12 +435,7 @@ class AIRemoteCategorizationCommand(PipelineCommand):
 
         except Exception as e:
             error_msg = str(e)
-            # Append response body if available
-            if hasattr(e, "response") and e.response is not None:
-                error_msg += f" | Response: {e.response.text}"
-            logging.error(
-                f"[AIRemoteCategorizationCommand] Batch {batch_start+1}-{batch_end} failed: {error_msg}"
-            )
+            logging.error(f"[AIRemoteCategorizationCommand] Batch {batch_start+1}-{batch_end} failed: {error_msg}")
             return None
 
     def _merge_results(self, df: pd.DataFrame, response_data: Dict) -> pd.DataFrame:
@@ -495,7 +487,7 @@ class QualityAnalysisCommand(PipelineCommand):
         self.calculator = calculator
 
     def process(
-        self, df: pd.DataFrame, context: Optional[Dict[str, Any]] = None
+        self, df: pd.DataFrame | None, context: Optional[Dict[str, Any]] = None
     ) -> CommandResult:
         """Process DataFrame and return quality metrics.
 
@@ -511,7 +503,10 @@ class QualityAnalysisCommand(PipelineCommand):
         """
         try:
             # Calculate quality metrics
-            metrics = self.calculator.calculate(df)
+            if df is not None:
+                metrics = self.calculator.calculate(df)
+            else:
+                return CommandResult(return_code=-1, data=None, error={"message": "No DataFrame provided"}, metadata_updates=None)
 
             # Build metadata updates with overall_quality_index
             metadata_updates = {
@@ -520,9 +515,7 @@ class QualityAnalysisCommand(PipelineCommand):
                 "quality_metrics": metrics.to_dict(),
             }
 
-            return CommandResult(
-                return_code=0, data=df, error=None, metadata_updates=metadata_updates
-            )
+            return CommandResult(return_code=0, data=df, error=None, metadata_updates=metadata_updates)
         except Exception as e:
             return CommandResult(
                 return_code=-1,
@@ -599,7 +592,7 @@ class DataPipeline:
         self.collector.end_pipeline()
 
         # Capture context_files at pipeline end
-        if self.context:
+        if self.context and self.collector.pipeline_metadata:
             self.collector.pipeline_metadata.context_files = self.context
 
         # Save metadata if repository provided
