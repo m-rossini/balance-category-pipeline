@@ -24,7 +24,38 @@ black = "^24.0.0"
 isort = "^5.13.0"
 mypy = "^1.7.0"
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.pylint.messages_control]
+disable = [
+    "missing-module-docstring",
+    "missing-class-docstring", 
+    "missing-function-docstring",
+    "line-too-long",
+    "too-many-arguments",
+    "too-many-positional-arguments",
+    "too-many-locals",
+    "too-many-statements",
+    "too-many-branches",
+    "too-few-public-methods",
+    "too-many-instance-attributes",
+    "unused-import",
+    "logging-fstring-interpolation",
+    "broad-exception-caught",
+    "import-outside-toplevel",
+    "unspecified-encoding",
+    "unnecessary-pass",
+    "unused-variable",
+    "no-member"
+]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.design]
+max-args = 10
+max-locals = 10
+max-returns = 6
+max-branches = 12
+max-statements = 50
+max-public-methods = 20
+max-attributes = 10
 

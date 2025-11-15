@@ -2,7 +2,7 @@
 
 # Define variables
 PROJECT_NAME = balance
-PACKAGE_NAME = balance
+PACKAGE_NAME = analyzer
 
 
 # Run tests
