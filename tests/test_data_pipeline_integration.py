@@ -170,6 +170,33 @@ class TestDataPipelineIntegration:
         assert result.data is None, "Expected data=None on error"
         assert result.error is not None, f"Expected error dict, got {result.error}"
 
+    def test_pipeline_saves_metadata_with_result_code(self, temp_workspace, test_csv_files, tmp_path):
+        """When pipeline completes, metadata should be saved and include result codes."""
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(temp_workspace['root'])
+
+            from analyzer.pipeline.metadata import MetadataRepository
+            # Create repository pointing to tmp_path
+            repo = MetadataRepository(storage_path=tmp_path)
+
+            pipeline = minimal_load.get_pipeline()
+            result_df = pipeline.run(repository=repo)
+
+            # Ensure saved metadata file exists
+            metadata = pipeline.collector.get_pipeline_metadata()
+            loaded = repo.load(metadata.run_id)
+            assert loaded is not None
+            # Pipeline-level result_code should be present and be 0 on success
+            assert hasattr(loaded, 'result_code')
+            assert loaded.result_code == 0
+            # Steps should include a result_code attribute per step
+            assert len(loaded.steps) > 0
+            assert hasattr(loaded.steps[0], 'result_code')
+            assert loaded.steps[0].result_code == 0
+        finally:
+            os.chdir(original_cwd)
+
     def test_append_files_command_read_error(self, temp_workspace):
         """Test AppendFilesCommand when file read fails."""
         # Create a file that will fail to read (e.g., invalid CSV)

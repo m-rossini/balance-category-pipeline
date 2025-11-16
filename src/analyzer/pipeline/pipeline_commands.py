@@ -303,10 +303,9 @@ class AIRemoteCategorizationCommand(PipelineCommand):
         self.max_errors = max_errors
         self.impl = impl
 
-    def process(
-        self, df: pd.DataFrame | None, context: Optional[Dict[str, Any]] = None
-    ) -> CommandResult:
+    def process(self, df: pd.DataFrame | None, context: Optional[Dict[str, Any]] = None) -> CommandResult:
         """Process DataFrame by calling remote categorization API in batches."""
+        
         logging.info(f"[AIRemoteCategorizationCommand] Processing {len(df if df is not None else [])} records in batches of {self.batch_size}")
         
         if df is None or len(df) == 0:
@@ -373,9 +372,7 @@ class AIRemoteCategorizationCommand(PipelineCommand):
                 )
                 return [context_data]
         except Exception as e:
-            logging.error(
-                f"[AIRemoteCategorizationCommand] Could not load {context_key}: {e}"
-            )
+            logging.error(f"[AIRemoteCategorizationCommand] Could not load {context_key}: {e}")
             return []
 
     def _build_transactions(self, batch_df: pd.DataFrame) -> List[Dict]:
@@ -428,35 +425,19 @@ class AIRemoteCategorizationCommand(PipelineCommand):
         transactions = selected_df[
             ["id", "description", "amount", "date", "type"]
         ].to_dict(orient="records")
-        logging.debug(
-            f"[AIRemoteCategorizationCommand] Built {len(transactions)} transactions from batch of {len(batch_df)} rows"
-        )
+        logging.debug(f"[AIRemoteCategorizationCommand] Built {len(transactions)} transactions from batch of {len(batch_df)} rows")
         return transactions
 
-    def _call_api(
-        self, payload: Dict, batch_start: int, batch_end: int
-    ) -> Optional[Dict]:
+    def _call_api(self, payload: Dict, batch_start: int, batch_end: int) -> Optional[Dict]:
         """Call remote API with payload and return response data."""
-        try:
-            logging.debug(
-                f"[AIRemoteCategorizationCommand] Sending batch {batch_start+1}-{batch_end}"
-            )
+        logging.debug(f"[AIRemoteCategorizationCommand] Sending batch {batch_start+1}-{batch_end}")
 
-            response = requests.post(
-                self.service_url, json=payload, params={"impl": self.impl}, timeout=30
-            )
-            response.raise_for_status()
-            response_data = response.json()
+        response = requests.post(self.service_url, json=payload, params={"impl": self.impl}, timeout=30)
+        response.raise_for_status()
+        response_data = response.json()
 
-            logging.info(
-                f"[AIRemoteCategorizationCommand] Batch {batch_start+1}-{batch_end} successful"
-            )
-            return response_data
-
-        except Exception as e:
-            error_msg = str(e)
-            logging.error(f"[AIRemoteCategorizationCommand] Batch {batch_start+1}-{batch_end} failed: {error_msg}")
-            return None
+        logging.info(f"[AIRemoteCategorizationCommand] Batch {batch_start+1}-{batch_end} successful")
+        return response_data
 
     def _merge_results(self, df: pd.DataFrame, response_data: Dict) -> pd.DataFrame:
         """Apply categorization results to DataFrame and return updated copy.
@@ -506,9 +487,7 @@ class QualityAnalysisCommand(PipelineCommand):
             calculator = SimpleQualityCalculator()
         self.calculator = calculator
 
-    def process(
-        self, df: pd.DataFrame | None, context: Optional[Dict[str, Any]] = None
-    ) -> CommandResult:
+    def process(self, df: pd.DataFrame | None, context: Optional[Dict[str, Any]] = None) -> CommandResult:
         """Process DataFrame and return quality metrics.
 
         Args:
@@ -574,29 +553,15 @@ class DataPipeline:
             start = time.time()
             input_rows = len(df) if isinstance(df, pd.DataFrame) else 0
 
+            # Run the command and capture result
             result = command.process(df, context=self.context)
 
-            # Check return code - halt on negative codes
-            if result.return_code < 0:
-                logging.error(
-                    f"[DataPipeline] Command {command.__class__.__name__} failed with return_code={result.return_code}: {result.error}"
-                )
-                # Return empty DataFrame to indicate failure
-                return pd.DataFrame()
-            df = result.data
-
-            # Update context if command returns context_updates
-            if result.context_updates:
-                self.context.update(result.context_updates)
-
-            output_rows = len(df) if isinstance(df, pd.DataFrame) else 0
+            # Compute end timing and rows
             elapsed = time.time() - start
             step_end_time = datetime.now(timezone.utc)
-            logging.debug(
-                f"[DataPipeline] Step {command.__class__.__name__} completed in {elapsed:.4f} seconds"
-            )
+            output_rows = len(result.data) if isinstance(result.data, pd.DataFrame) else 0
 
-            # Track step metadata
+            # Create step metadata once per step (success or failure)
             from analyzer.pipeline.metadata import StepMetadata
 
             step_metadata = StepMetadata(
@@ -607,6 +572,8 @@ class DataPipeline:
                 start_time=step_start_time,
                 end_time=step_end_time,
                 parameters=result.metadata_updates or {},
+                result_code=result.return_code,
+                error=result.error,
             )
             self.collector.track_step(step_metadata)
 
@@ -615,12 +582,38 @@ class DataPipeline:
                 for key, value in result.metadata_updates.items():
                     setattr(self.collector.pipeline_metadata, key, value)
 
+            # Merge context updates
+            if result.context_updates:
+                self.context.update(result.context_updates)
+
+            # Halt on negative return codes and persist metadata
+            if result.return_code < 0:
+                logging.error(
+                    f"[DataPipeline] Command {command.__class__.__name__} failed with return_code={result.return_code}: {result.error}"
+                )
+                if self.collector and self.collector.pipeline_metadata:
+                    self.collector.pipeline_metadata.result_code = result.return_code
+                    self.collector.pipeline_metadata.error = result.error
+                    # End collection
+                    self.collector.end_pipeline()
+                    if repository:
+                        repository.save(self.collector.get_pipeline_metadata())
+                return pd.DataFrame()
+
+            # Continue pipeline flow on success
+            df = result.data
+
         # End collection
         self.collector.end_pipeline()
 
         # Capture context_files at pipeline end
         if self.context and self.collector.pipeline_metadata:
             self.collector.pipeline_metadata.context_files = self.context
+        # Set pipeline result_code to last command's return code (assume success if none failed)
+        if self.collector and self.collector.pipeline_metadata:
+            # If not set previously (e.g., in failure), default to 0
+            if self.collector.pipeline_metadata.result_code is None:
+                self.collector.pipeline_metadata.result_code = 0
 
         # Save metadata if repository provided
         if repository:

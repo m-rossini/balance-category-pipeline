@@ -20,6 +20,8 @@ class StepMetadata:
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         parameters: Optional[Dict[str, Any]] = None,
+        result_code: Optional[int] = 0,
+        error: Optional[Dict[str, Any]] = None,
     ):
         """Initialize step metadata.
 
@@ -38,6 +40,8 @@ class StepMetadata:
         self.start_time = start_time
         self.end_time = end_time
         self.parameters = parameters or {}
+        self.result_code = result_code
+        self.error = error
 
         # Calculate duration if not provided
         if duration is not None:
@@ -57,6 +61,8 @@ class StepMetadata:
             "start_time": self.start_time.isoformat() if self.start_time else None,
             "end_time": self.end_time.isoformat() if self.end_time else None,
             "parameters": self.parameters,
+            "result_code": self.result_code,
+            "error": self.error,
         }
 
 
@@ -69,7 +75,8 @@ class PipelineMetadata:
         start_time: datetime,
         end_time: datetime,
         quality_index: Optional[Any] = None,
-        context_files: Optional[Dict[str, str]] = None,
+    context_files: Optional[Dict[str, str]] = None,
+    error: Optional[Dict[str, Any]] = None,
     ):
         """Initialize pipeline metadata.
 
@@ -89,6 +96,9 @@ class PipelineMetadata:
         self.context_files = context_files
         self.input_rows: Optional[int] = None
         self.output_rows: Optional[int] = None
+        # Track overall pipeline result code (0 == success, negative == error)
+        self.result_code: Optional[int] = 0
+        self.error = error
 
     @property
     def total_duration(self) -> float:
@@ -116,6 +126,8 @@ class PipelineMetadata:
             "quality_index": self.quality_index,
             "context_files": self.context_files,
             "steps": [step.to_dict() for step in self.steps],
+            "result_code": self.result_code,
+            "error": self.error,
         }
 
 
@@ -240,6 +252,8 @@ class MetadataRepository:
         pipeline.run_id = data["run_id"]
         pipeline.input_rows = data.get("input_rows")
         pipeline.output_rows = data.get("output_rows")
+        pipeline.result_code = data.get("result_code", 0)
+        pipeline.error = data.get("error")
 
         # Reconstruct steps
         for step_data in data.get("steps", []):
@@ -259,6 +273,8 @@ class MetadataRepository:
                     else None
                 ),
                 parameters=step_data.get("parameters", {}),
+                result_code=step_data.get("result_code", 0),
+                error=step_data.get("error"),
             )
             pipeline.add_step(step)
 
