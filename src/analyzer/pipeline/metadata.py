@@ -2,6 +2,7 @@
 
 import json
 import uuid
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -187,6 +188,8 @@ class MetadataRepository:
         """
         if storage_path is None:
             storage_path = Path.home() / ".metadata" / "pipelines"
+
+        logging.info(f"[MetadataRepository] Using storage path: {storage_path}")
 
         self.storage_path = Path(storage_path)
 

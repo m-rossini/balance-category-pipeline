@@ -55,9 +55,8 @@ class MergeTrainnedDataCommand(PipelineCommand):
         self.file_glob = file_glob
         self.context = context or {}
 
-    def process(
-        self, df=None, context: Optional[Dict[str, Any]] = None
-    ) -> CommandResult:
+    def process(self, df=None, context: Optional[Dict[str, Any]] = None) -> CommandResult:
+        logging.info(f"[MergeTrainnedDataCommand] Processing with input_file: {self.input_file}")
         if df is None or not self.input_file:
             return CommandResult(
                 return_code=-1,
@@ -66,9 +65,7 @@ class MergeTrainnedDataCommand(PipelineCommand):
             )
 
         try:
-            logging.debug(
-                f"[MergeTrainnedDataCommand] Merging with {self.input_file} on {self.on_columns}"
-            )
+            logging.debug(f"[MergeTrainnedDataCommand] Merging with {self.input_file} on {self.on_columns}")
             other = pd.read_csv(
                 self.input_file,
                 usecols=[
@@ -80,12 +77,8 @@ class MergeTrainnedDataCommand(PipelineCommand):
             )
             common = self.on_columns or ["TransactionNumber"]
 
-            # Perform the merge
-            merged = pd.merge(
-                df, other, how="left", on=common, suffixes=(None, "_trained")
-            )
+            merged = pd.merge(df, other, how="left", on=common, suffixes=(None, "_trained"))
 
-            # Prepare numeric confidence series for comparison (trained and original)
             trained_conf = (
                 pd.to_numeric(merged["Confidence_trained"], errors="coerce")
                 if "Confidence_trained" in merged.columns
@@ -128,10 +121,9 @@ class MergeTrainnedDataCommand(PipelineCommand):
                     merged.loc[mask_conf, "Confidence"] = trained_conf.loc[mask_conf]
                 merged.drop(columns=["Confidence_trained"], inplace=True)
 
-            logging.info(
-                f"[MergeTrainnedDataCommand] Merge completed. Resulting rows: {len(merged)}"
-            )
+            logging.info(f"[MergeTrainnedDataCommand] Merge completed. Resulting rows: {len(merged)}")
             return CommandResult(return_code=0, data=merged)
+
         except Exception as e:
             return CommandResult(return_code=-1, data=None, error={"message": str(e)})
 
@@ -143,16 +135,15 @@ class ApplyFunctionsCommand(PipelineCommand):
         self.context = context or {}
         self.functions = functions or [ApplyFunctionsCommand.dummy_function]
 
-    def process(
-        self, df: Optional[pd.DataFrame], context: Optional[Dict[str, Any]] = None
-    ) -> CommandResult:
+    def process(self, df: Optional[pd.DataFrame], context: Optional[Dict[str, Any]] = None) -> CommandResult:
         if df is None or df.empty:
             logging.warning("No data to clean.")
             return CommandResult(return_code=0, data=df)
         for fn in self.functions:
+            logging.debug(f"[ApplyFunctionsCommand] Applying function: {fn.__name__}")
             df = fn(df)
-        logging.debug(f"[ApplyFunctionsCommand] Cleaned DataFrame shape: {df.shape}")
-        logging.info(f"Cleaned data: {len(df)} rows remain after cleaning.")
+        
+        logging.info(f"[ApplyFunctionsCommand] Cleaned data: {len(df)} rows remain after cleaning. Shape: {df.shape}")
         return CommandResult(return_code=0, data=df)
 
     @staticmethod
@@ -260,18 +251,18 @@ class SaveFileCommand(PipelineCommand):
         self,
         output_path,
         save_empty: bool = True,
-        context: Optional[Dict[str, Any]] = None,
-    ):
+        context: Optional[Dict[str, Any]] = None,):
+
         self.output_path = Path(output_path)
         self.save_empty = save_empty
         self.context = context or {}
 
-    def process(
-        self, df: pd.DataFrame | None, context: Optional[Dict[str, Any]] = None
-    ) -> CommandResult:
+    def process(self, df: pd.DataFrame | None, context: Optional[Dict[str, Any]] = None) -> CommandResult:
         try:
+            logging.info(f"[SaveFileCommand] Saving DataFrame to {self.output_path}")
             if df is None or (df.empty and not self.save_empty):
                 return CommandResult(return_code=0, data=df)
+                
             self.output_path.parent.mkdir(parents=True, exist_ok=True)
             df.to_csv(str(self.output_path), index=False)
             logging.info(
@@ -301,8 +292,8 @@ class AIRemoteCategorizationCommand(PipelineCommand):
         context=None,
         batch_size=50,
         max_errors=10,
-        impl="fixed",
-    ):
+        impl="fixed",):
+
         self.service_url = service_url
         self.method = method.upper()
         self.headers = headers or {}
@@ -316,9 +307,8 @@ class AIRemoteCategorizationCommand(PipelineCommand):
         self, df: pd.DataFrame | None, context: Optional[Dict[str, Any]] = None
     ) -> CommandResult:
         """Process DataFrame by calling remote categorization API in batches."""
-        logging.info(
-            f"[AIRemoteCategorizationCommand] Processing {len(df if df is not None else [])} records in batches of {self.batch_size}"
-        )
+        logging.info(f"[AIRemoteCategorizationCommand] Processing {len(df if df is not None else [])} records in batches of {self.batch_size}")
+        
         if df is None or len(df) == 0:
             return CommandResult(return_code=0, data=df)
 
@@ -344,16 +334,16 @@ class AIRemoteCategorizationCommand(PipelineCommand):
                 start += self.batch_size
 
             if error_count >= self.max_errors:
-                logging.error(
-                    f"[AIRemoteCategorizationCommand] Stopping after {error_count} errors (max: {self.max_errors})"
-                )
+                logging.error(f"[AIRemoteCategorizationCommand] Stopping after {error_count} errors (max: {self.max_errors})")
 
-            logging.debug(
-                f"[AIRemoteCategorizationCommand] Completed processing {len(df)} records"
-            )
+            logging.debug(f"[AIRemoteCategorizationCommand] Completed processing {len(df)} records")
             return CommandResult(return_code=0, data=df)
+
         except Exception as e:
             return CommandResult(return_code=-1, data=None, error={"message": str(e)})
+
+        finally:
+            logging.info(f"[AIRemoteCategorizationCommand] Finished processing")
 
     def _load_context(self) -> List[Dict]:
         """Load all context files (driver method)."""
@@ -403,6 +393,36 @@ class AIRemoteCategorizationCommand(PipelineCommand):
 
         # Add id column based on index
         selected_df["id"] = selected_df.index.astype(str)
+
+        # Ensure date is JSON serializable: convert pandas Timestamp/datetime to ISO strings
+        # and leave other values as strings as a fallback. Preserve None/NaN.
+        def _date_to_iso(val):
+            try:
+                if isinstance(val, pd.Timestamp):
+                    return val.isoformat()
+                # If it's a numpy datetime64 or datetime, convert via pandas
+                if hasattr(val, "astype") and "datetime" in str(getattr(val, "dtype", "")):
+                    return pd.to_datetime(val).isoformat()
+                return str(val) if pd.notnull(val) else None
+            except Exception:
+                return str(val) if pd.notnull(val) else None
+
+        selected_df["date"] = selected_df["date"].apply(_date_to_iso)
+
+        # Ensure amount is a native Python float or None (JSON serializable)
+        def _to_python_number(val):
+            try:
+                if pd.isnull(val):
+                    return None
+                return float(val)
+            except Exception:
+                return val
+
+        selected_df["amount"] = selected_df["amount"].apply(_to_python_number)
+
+        # Ensure description and type are plain strings (not numpy types)
+        selected_df["description"] = selected_df["description"].apply(lambda v: None if pd.isnull(v) else str(v))
+        selected_df["type"] = selected_df["type"].apply(lambda v: None if pd.isnull(v) else str(v))
 
         # Convert to list of dicts with proper field order
         transactions = selected_df[
@@ -549,7 +569,7 @@ class DataPipeline:
         self.collector.start_pipeline()
 
         for command in self.commands:
-            logging.debug(f"[DataPipeline] Running step: {command.__class__.__name__}")
+            logging.info(f"[DataPipeline] Running step: {command.__class__.__name__}")
             step_start_time = datetime.now(timezone.utc)
             start = time.time()
             input_rows = len(df) if isinstance(df, pd.DataFrame) else 0
