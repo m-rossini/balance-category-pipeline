@@ -1,0 +1,9 @@
+flowchart TD
+  A[Start run] --> B[Command executes]
+  B -->|success| C[Record step result_code=0]
+  B -->|failure| D[Record step result_code<0 & error]
+  D --> E[Set pipeline result_code & pipeline.error]
+  E --> F[End pipeline & save metadata]
+  C --> G[Continue to next step]
+  G --> H[Finish run & save metadata]
+

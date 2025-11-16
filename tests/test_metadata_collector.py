@@ -55,6 +55,26 @@ def test_metadata_collector_track_step():
     assert collector.pipeline_metadata.steps[0].name == "AppendFilesCommand"
 
 
+def test_metadata_collector_step_includes_result_code():
+    """StepMetadata should capture and retain the command's result code."""
+    collector = MetadataCollector(pipeline_name="test_pipeline")
+    collector.start_pipeline()
+
+    step = StepMetadata(
+        name="AppendFilesCommand",
+        input_rows=0,
+        output_rows=1000,
+        duration=1.5,
+        parameters={"input_dir": "/data"},
+        result_code=-1,
+    )
+
+    collector.track_step(step)
+
+    assert len(collector.pipeline_metadata.steps) == 1
+    assert collector.pipeline_metadata.steps[0].result_code == -1
+
+
 def test_metadata_collector_multiple_steps():
     """Test tracking multiple steps."""
     collector = MetadataCollector(pipeline_name="test_pipeline")

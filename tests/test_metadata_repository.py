@@ -59,6 +59,33 @@ def test_metadata_repository_persists_and_retrieves_metadata(temp_dir):
     assert loaded.steps[1].name == "CleanCommand"
 
 
+def test_metadata_repository_persist_step_result_code(temp_dir):
+    """Confirm step result codes are persisted and loaded correctly."""
+    repo = MetadataRepository(storage_path=Path(temp_dir))
+
+    pipeline = PipelineMetadata(
+        pipeline_name="test_pipeline",
+        start_time=datetime(2025, 10, 26, 10, 0, 0),
+        end_time=datetime(2025, 10, 26, 10, 0, 5),
+    )
+
+    step = StepMetadata(
+        name="Step1",
+        input_rows=0,
+        output_rows=100,
+        duration=1.0,
+        parameters={"key": "value"},
+        result_code=-1,
+    )
+    pipeline.add_step(step)
+
+    run_id = repo.save(pipeline)
+    loaded = repo.load(run_id)
+
+    assert len(loaded.steps) == 1
+    assert loaded.steps[0].result_code == -1
+
+
 def test_metadata_repository_save_and_load(temp_dir):
     """Test saving and loading metadata."""
     repo = MetadataRepository(storage_path=Path(temp_dir))

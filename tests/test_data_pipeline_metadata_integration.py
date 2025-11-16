@@ -85,3 +85,38 @@ def test_data_pipeline_saves_metadata_automatically():
         assert loaded_metadata.pipeline_name == "auto_save_pipeline"
         assert len(loaded_metadata.steps) == 1
         assert loaded_metadata.output_rows == 3
+
+
+    def test_data_pipeline_saves_failure_metadata(temp_workspace):
+        """When a step fails, pipeline should save metadata including errors for the step and pipeline."""
+        from analyzer.pipeline.pipeline_commands import PipelineCommand, CommandResult, DataPipeline
+        from analyzer.pipeline.metadata import MetadataCollector, MetadataRepository
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            storage_path = Path(tmpdir)
+            repo = MetadataRepository(storage_path=storage_path)
+            collector = MetadataCollector(pipeline_name="failure_pipeline")
+
+            class FailCommand(PipelineCommand):
+                def process(self, df: pd.DataFrame | None, context=None) -> CommandResult:
+                    return CommandResult(return_code=-1, data=None, error={"message": "simulated failure"})
+
+            pipeline = DataPipeline(commands=[FailCommand()], collector=collector)
+
+            result_df = pipeline.run(repository=repo)
+
+            # run returns empty DataFrame on failure
+            assert isinstance(result_df, pd.DataFrame)
+            assert result_df.empty
+
+            runs = repo.list_runs()
+            assert len(runs) == 1
+            loaded = repo.load(runs[0])
+            assert loaded is not None
+            assert loaded.result_code == -1
+            assert loaded.error is not None
+            assert loaded.error.get("message") == "simulated failure"
+            assert len(loaded.steps) == 1
+            assert loaded.steps[0].result_code == -1
+            assert loaded.steps[0].error is not None
+            assert loaded.steps[0].error.get("message") == "simulated failure"

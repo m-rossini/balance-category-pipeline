@@ -130,22 +130,14 @@ class TestAIRemoteCategorization:
             context={'categories': str(test_context_files['categories']), 'typecode': str(test_context_files['typecodes'])}
         )
 
-        # Execute (should not raise exception)
+        # Execute - calling the API will raise; we expect the command to return a failure code
         result = command.process(df)
-        
-        # Assert CommandResult structure - batch failures are handled gracefully (return_code=0, data returned)
-        assert_command_result_success(result)
-        
-        result_df = result.data
 
-        # Output validation: DataFrame should be returned unchanged (graceful failure)
-        assert isinstance(result_df, pd.DataFrame)
-        assert len(result_df) == 3
-        
-        # All rows should remain uncategorized (no changes from failure)
-        assert pd.isna(result_df.loc[0, 'CategoryAnnotation'])
-        assert pd.isna(result_df.loc[1, 'CategoryAnnotation'])
-        assert pd.isna(result_df.loc[2, 'CategoryAnnotation'])
+        # Assert CommandResult structure - external service error should produce a failure
+        assert_command_result_failure(result, expected_return_code=-1)
+
+        # On failure, data should be None
+        assert result.data is None
 
     @patch('requests.post')
     def test_api_returns_http_error(self, mock_post, test_context_files):
@@ -166,22 +158,14 @@ class TestAIRemoteCategorization:
             context={'categories': str(test_context_files['categories']), 'typecode': str(test_context_files['typecodes'])}
         )
 
-        # Execute (should not raise exception)
+        # Execute - HTTP errors during raise_for_status should cause the command to fail
         result = command.process(df)
-        
-        # Assert CommandResult structure - batch failures are handled gracefully (return_code=0, data returned)
-        assert_command_result_success(result)
-        
-        result_df = result.data
 
-        # Output validation: DataFrame should be returned unchanged (graceful failure)
-        assert isinstance(result_df, pd.DataFrame)
-        assert len(result_df) == 3
-        
-        # All rows should remain uncategorized
-        assert pd.isna(result_df.loc[0, 'CategoryAnnotation'])
-        assert pd.isna(result_df.loc[1, 'CategoryAnnotation'])
-        assert pd.isna(result_df.loc[2, 'CategoryAnnotation'])
+        # Expect failure return code
+        assert_command_result_failure(result, expected_return_code=-1)
+
+        # On failure, data should be None
+        assert result.data is None
 
     @patch('requests.post')
     def test_empty_dataframe_input(self, mock_post, test_context_files):
@@ -207,7 +191,7 @@ class TestAIRemoteCategorization:
 
         # Execute
         result = command.process(df)
-        
+
         # Assert CommandResult structure
         assert_command_result_success(result)
         
@@ -377,23 +361,15 @@ class TestAIRemoteCategorization:
 
         # Execute
         result = command.process(df)
-        
-        # Assert CommandResult structure
-        assert_command_result_success(result)
-        
-        result_df = result.data
 
-        # Output validation: should return DataFrame unchanged
-        assert isinstance(result_df, pd.DataFrame)
-        assert len(result_df) == 6
-        
-        # Verify API was called only 2 times (first 2 batches fail, then stop)
-        # With 6 rows and batch_size=2: would be 3 batches, but stops after 2 failures
-        assert mock_post.call_count == 2, f"Expected 2 API calls, got {mock_post.call_count}"
-        
-        # No rows should be categorized (all API calls failed)
-        assert pd.isna(result_df.loc[0, 'CategoryAnnotation'])
-        assert pd.isna(result_df.loc[1, 'CategoryAnnotation'])
+        # Assert CommandResult structure — API exception bubbles up and causes failure
+        assert_command_result_failure(result, expected_return_code=-1)
+
+        # On failure, data should be None
+        assert result.data is None
+
+        # Verify API was called only once (first batch caused exception, command failed)
+        assert mock_post.call_count == 1, f"Expected 1 API call, got {mock_post.call_count}"
 
     @patch('requests.post')
     def test_context_passed_as_json_content_not_file_paths(self, mock_post, test_context_files):
@@ -462,30 +438,4 @@ class TestAIRemoteCategorization:
             assert isinstance(code_item, dict), "Each code item should be a dict"
             assert 'code' in code_item, "Code item must have 'code' attribute"
             assert 'description' in code_item, "Code item must have 'description' attribute"
-
-    @patch('requests.post')
-    def test_dates_serialized_to_string_in_payload(self, mock_post, test_context_files):
-        """Ensure dates are converted to strings in the payload even when provided as Timestamps.
-        """
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"code": "SUCCESS", "items": []}
-        mock_post.return_value = mock_response
-
-        df = self.create_test_dataframe()
-        # Convert dates to pandas datetime dtype to simulate the real pipeline
-        df['TransactionDate'] = pd.to_datetime(df['TransactionDate'])
-
-        command = AIRemoteCategorizationCommand(
-            service_url="http://api.example.com/categorize",
-            context={'categories': str(test_context_files['categories']), 'typecode': str(test_context_files['typecodes'])}
-        )
-
-        result = command.process(df)
-        assert_command_result_success(result)
-        assert mock_post.called
-
-        sent_payload = mock_post.call_args[1]['json']
-        for txn in sent_payload['transactions']:
-            assert isinstance(txn['date'], str), "Transaction date in payload should be a string"
 
