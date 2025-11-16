@@ -6,6 +6,7 @@ applyTo: '**'
     * Make sure you are aware of previous decisions and design that are located under summaries
     * Understand the design based on that summaries
     * Note that sometimes a summary might not be there due to any reason since forgetting to create or even losing it
+    * When asked about what is going on or opinions DO NOT CHANGE CODE, unless explicitely said
 
 * For Operations mode:
     * When generating code, please go step by step, make one change at a time
@@ -26,7 +27,7 @@ applyTo: '**'
 * For Coding:
     * TRY TO KEEP LOGGING STATEMENTS INTO A single LINE
     * Add type hints and maintain them updated
-    * Imports ALWAYS goes to the top of the file
+    * Imports ALWAYS goes to the top of the file, NEVER do LOCAL Import
     * Start with test that fails and move from ther in TDD fashion
     * use extreme programming paradigm when coding and consider myself as your senior peer/counterpart
     * Ask me to review and approve what you created as your extreme programmer peer
@@ -42,13 +43,14 @@ applyTo: '**'
     * When creating tests, always use the same assertion library that is already being used in the project.
     * When creating tests, always use the same naming conventions that are already being used in the project.
     * When creating tests, always use the same folder structure that is already being used in the project
-
 * For package installation:
     * It is OK to use pip or poetry to install on demand packages.
     * All on-demand packages installed should be added to the dependencies file, being it requirements.txt, project.toml or other
 
 * For After Work:
-    * Always create a summary of the work done.
-    * Save it as a .md file in summaries sub directory rthat is just under the root directory
+    * Always create a summary of the work done, and that summary should be at most 1 page long.
+    * Save it as a .md file in summaries sub directory that is just under the root directory
     * Start the name with a data in the form YYYY-MM-DD-{some proper identifiable name}
+    * Whenever make sense, alongside the summary, create a mermaid diagram, in the same directory, of the implemented solution
+    * Finally after creating the summaries and diagrams, commit them.
 

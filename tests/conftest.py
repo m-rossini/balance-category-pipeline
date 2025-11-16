@@ -347,19 +347,19 @@ def pipeline_metadata_builder():
         status='success',
         steps_run=3
     ):
+        now = datetime.now()
         metadata = PipelineMetadata(
             pipeline_name=pipeline_name,
-            execution_id=execution_id,
-            execution_date=datetime.now(),
-            status=status
+            start_time=now,
+            end_time=now
         )
         # Add steps
         for i in range(steps_run):
             step = StepMetadata(
-                step_name=f'step_{i}',
-                status='success',
-                duration_seconds=1.5,
-                rows_processed=100
+                name=f'step_{i}',
+                input_rows=100,
+                output_rows=100,
+                duration=1.5
             )
             metadata.steps.append(step)
         return metadata
@@ -377,11 +377,10 @@ def step_metadata_builder():
         error_message=None
     ):
         step = StepMetadata(
-            step_name=step_name,
-            status=status,
-            duration_seconds=duration_seconds,
-            rows_processed=rows_processed,
-            error_message=error_message
+            name=step_name,
+            input_rows=rows_processed,
+            output_rows=rows_processed,
+            duration=duration_seconds
         )
         return step
     return _builder
