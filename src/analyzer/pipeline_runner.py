@@ -64,9 +64,7 @@ def main():
     if isinstance(pipeline, DataPipeline):
         pipeline.collector.pipeline_metadata = pipeline_metadata
 
-    logging.debug(
-        f"[pipeline_runner] Workflow context: {getattr(pipeline, 'context', None)}"
-    )
+    logging.debug(f"[pipeline_runner] Workflow context: {getattr(pipeline, 'context', None)}")
     start_time = time.time()
 
     # Run pipeline - DataPipeline always has a collector and saves metadata
